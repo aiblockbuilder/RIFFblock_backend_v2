@@ -68,8 +68,9 @@ export default (sequelize: Sequelize, dataTypes: typeof DataTypes) => {
       Riff.belongsTo(models.Collection, { foreignKey: "collectionId", as: "collection" })
       Riff.hasMany(models.Stake, { foreignKey: "riffId", as: "stakes" })
       Riff.hasMany(models.Tip, { foreignKey: "riffId", as: "tips" })
+      Riff.hasMany(models.Favorite, { foreignKey: "riffId" })
       Riff.belongsToMany(models.Tag, { through: models.RiffTag, foreignKey: "riffId", as: "tags" })
-      Riff.belongsToMany(models.User, { through: "Favorites", foreignKey: "riffId", as: "favoritedBy" })
+      Riff.belongsToMany(models.User, { through: models.Favorite, foreignKey: "riffId", as: "favoritedBy" })
     }
   }
 
