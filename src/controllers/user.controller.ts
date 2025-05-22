@@ -8,6 +8,7 @@ const Riff = db.Riff
 const Collection = db.Collection
 const Stake = db.Stake
 const Tip = db.Tip
+const Favorite = db.Favorite
 
 const userController = {
   // Get user by wallet address
@@ -55,8 +56,8 @@ const userController = {
         name: user.name,
         bio: user.bio,
         location: user.location,
-        avatar: user.avatar ? `/uploads/images/${user.avatar}` : null,
-        coverImage: user.coverImage ? `/uploads/images/${user.coverImage}` : null,
+        avatar: user.avatar ? user.avatar : null,
+        coverImage: user.coverImage ? user.coverImage : null,
         ensName: user.ensName,
         socialLinks: {
           twitter: user.twitterUrl,
@@ -75,7 +76,7 @@ const userController = {
         updatedAt: user.updatedAt,
       }
 
-      console.log(">>> response : ", response)
+      // console.log(">>> response : ", response)
 
       return res.status(200).json(response)
     } catch (error) {
@@ -139,6 +140,8 @@ const userController = {
         },
         order: [["createdAt", "DESC"]],
       })
+
+      // console.log(">>> nfts : ", nfts)
 
       return res.status(200).json(nfts)
     } catch (error) {
@@ -294,6 +297,8 @@ const userController = {
       }
 
       const { walletAddress } = req.params
+      const { limit, page } = req.query
+      const offset = (Number.parseInt(limit as string) * Number.parseInt(page as string))
 
       // Find user
       const user = await User.findOne({ where: { walletAddress } })
@@ -302,10 +307,36 @@ const userController = {
         return res.status(404).json({ error: "User not found" })
       }
 
-      // Get user's favorites
-      const favorites = await user.getFavoritedRiffs()
+      console.log(">>> user id : ", user.id)
 
-      return res.status(200).json(favorites)
+      // Get user's favorites with pagination
+      const favorites = await Favorite.findAll({
+        limit: Number.parseInt(limit as string),
+        offset: offset,
+        where: { userId: user.id },
+
+        include: [
+          {
+            model: Riff,
+            as: "riffs",
+            include: [
+              {
+                model: User,
+                as: "creator",
+                attributes: ["id", "name"],
+              },
+            ],
+          },
+        ],
+        order: [["createdAt", "DESC"]],
+      })
+
+      // Extract only the Riff data
+      const favoritedRiffs = favorites.map((fav: any) => fav.riffs)
+
+      // console.log(">>> get user favorites : \n", favorites)
+
+      return res.status(200).json(favoritedRiffs)
     } catch (error) {
       logger.error("Error in getUserFavorites:", error)
       return res.status(500).json({ error: "Internal server error" })
