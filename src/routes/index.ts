@@ -8,6 +8,7 @@ import uploadRoutes from "./upload.routes"
 import marketRoutes from "./market.routes"
 import genreRoutes from "./genre.routes"
 import tagRoutes from "./tag.routes"
+import favoriteRoutes from "./favorite.routes"
 
 const router = express.Router()
 
@@ -26,5 +27,6 @@ router.use("/upload", uploadRoutes)
 router.use("/marketplace", marketRoutes)
 router.use("/genres", genreRoutes)
 router.use("/tags", tagRoutes)
+router.use("/favorite", favoriteRoutes)
 
 export default router
