@@ -33,6 +33,9 @@ router.get(
   userController.getUserCollections,
 )
 
+// Get all activity
+router.get("/all-activity", userController.getAllActivity)
+
 // Get user's activity
 router.get("/:walletAddress/activity", param("walletAddress").isString().notEmpty(), userController.getUserActivity)
 
