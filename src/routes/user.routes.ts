@@ -6,11 +6,11 @@ import uploadMiddleware from "../middlewares/upload.middleware"
 const router = express.Router()
 
 // Get user profile by wallet address
-router.get("/:walletAddress", param("walletAddress").isString().notEmpty(), userController.getUserByWalletAddress)
+router.get("/profile/:walletAddress", param("walletAddress").isString().notEmpty(), userController.getUserByWalletAddress)
 
 // Update user profile
 router.put(
-  "/:walletAddress",
+  "/profile/:walletAddress",
   param("walletAddress").isString().notEmpty(),
   body("name").optional().isString(),
   body("bio").optional().isString(),
@@ -24,11 +24,11 @@ router.put(
 )
 
 // Get user's NFTs
-router.get("/:walletAddress/nfts", param("walletAddress").isString().notEmpty(), userController.getUserNfts)
+router.get("/profile/:walletAddress/nfts", param("walletAddress").isString().notEmpty(), userController.getUserNfts)
 
 // Get user's collections
 router.get(
-  "/:walletAddress/collections",
+  "/profile/:walletAddress/collections",
   param("walletAddress").isString().notEmpty(),
   userController.getUserCollections,
 )
@@ -37,28 +37,28 @@ router.get(
 router.get("/all-activity", userController.getAllActivity)
 
 // Get user's activity
-router.get("/:walletAddress/activity", param("walletAddress").isString().notEmpty(), userController.getUserActivity)
+router.get("/profile/:walletAddress/activity", param("walletAddress").isString().notEmpty(), userController.getUserActivity)
 
 // Get user's tipping tiers
 router.get(
-  "/:walletAddress/tipping-tiers",
+  "/profile/:walletAddress/tipping-tiers",
   param("walletAddress").isString().notEmpty(),
   userController.getUserTippingTiers,
 )
 
 // Get user's favorites
-router.get("/:walletAddress/favorites", param("walletAddress").isString().notEmpty(), userController.getUserFavorites)
+router.get("/profile/:walletAddress/favorites", param("walletAddress").isString().notEmpty(), userController.getUserFavorites)
 
 // Get user's staking settings
 router.get(
-  "/:walletAddress/staking-settings",
+  "/profile/:walletAddress/staking-settings",
   param("walletAddress").isString().notEmpty(),
   userController.getUserStakingSettings,
 )
 
 // Update user's staking settings
 router.put(
-  "/:walletAddress/staking-settings",
+  "/profile/:walletAddress/staking-settings",
   param("walletAddress").isString().notEmpty(),
   userController.updateUserStakingSettings,
 )
@@ -68,5 +68,8 @@ router.post("/upload-avatar", uploadMiddleware.single("avatar"), userController.
 
 // Upload profile cover image
 router.post("/upload-cover", uploadMiddleware.single("cover"), userController.uploadCover)
+
+// Get the most tipped user profile
+router.get("/most-tipped", userController.getMostTippedUserProfile)
 
 export default router
