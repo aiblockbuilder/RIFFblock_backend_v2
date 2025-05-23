@@ -171,12 +171,12 @@ const riffController = {
 
       // Combine and sort activity
       const activity = [
-        ...tips.map((tip) => ({
+        ...tips.map((tip: any) => ({
           type: "tip",
           data: tip,
           createdAt: tip.createdAt,
         })),
-        ...stakes.map((stake) => ({
+        ...stakes.map((stake: any) => ({
           type: "stake",
           data: stake,
           createdAt: stake.createdAt,
@@ -510,6 +510,69 @@ const riffController = {
       })
     } catch (error) {
       logger.error("Error in removeFromFavorites:", error)
+      return res.status(500).json({ error: "Internal server error" })
+    }
+  },
+
+  // Get the latest uploaded riff
+  getLatestRiff: async (req: Request, res: Response) => {
+    try {
+      const riff = await Riff.findOne({
+        include: [
+          { model: User, as: "creator", attributes: ["id", "name", "walletAddress", "avatar"] },
+          { model: Collection, as: "collection", attributes: ["id", "name"] },
+        ],
+        order: [["createdAt", "DESC"]],
+      })
+      if (!riff) {
+        return res.status(404).json({ error: "No riffs found" })
+      }
+      // Get stats
+      const totalStakeAmount = (await Stake.sum("amount", { where: { riffId: riff.id } })) || 0
+      // Return only the required fields
+      return res.status(200).json({
+        name: riff.title,
+        artist: riff.creator?.name || "Unknown Artist",
+        image: riff.coverImage || "/placeholder.svg",
+        waveform: riff.audioFile,
+        stakedAmount: Number(totalStakeAmount),
+      })
+    } catch (error) {
+      logger.error("Error in getLatestRiff:", error)
+      return res.status(500).json({ error: "Internal server error" })
+    }
+  },
+
+  // Get a random riff
+  getRandomRiff: async (req: Request, res: Response) => {
+    try {
+      const count = await Riff.count()
+      if (count === 0) {
+        return res.status(404).json({ error: "No riffs found" })
+      }
+      const randomOffset = Math.floor(Math.random() * count)
+      const riff = await Riff.findOne({
+        include: [
+          { model: User, as: "creator", attributes: ["id", "name", "walletAddress", "avatar"] },
+          { model: Collection, as: "collection", attributes: ["id", "name"] },
+        ],
+        offset: randomOffset,
+      })
+      if (!riff) {
+        return res.status(404).json({ error: "No riffs found" })
+      }
+      // Get stats
+      const totalStakeAmount = (await Stake.sum("amount", { where: { riffId: riff.id } })) || 0
+      // Return only the required fields
+      return res.status(200).json({
+        name: riff.title,
+        artist: riff.creator?.name || "Unknown Artist",
+        image: riff.coverImage || "/placeholder.svg",
+        waveform: riff.audioFile,
+        stakedAmount: Number(totalStakeAmount),
+      })
+    } catch (error) {
+      logger.error("Error in getRandomRiff:", error)
       return res.status(500).json({ error: "Internal server error" })
     }
   },
