@@ -44,6 +44,8 @@ export default (sequelize: Sequelize, dataTypes: typeof DataTypes) => {
       User.hasMany(models.Tip, { foreignKey: "userId", as: "tips" })
       User.hasMany(models.Tip, { foreignKey: "recipientId", as: "receivedTips" })
       User.belongsToMany(models.Riff, { through: models.Favorite, foreignKey: "userId", as: "favoritedRiffs" })
+      User.hasMany(models.TippingTier, { foreignKey: "userId", as: "tippingTiers" })
+      User.hasOne(models.StakingSetting, { foreignKey: "userId", as: "stakingSetting" })
     }
   }
 

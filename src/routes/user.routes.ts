@@ -56,6 +56,13 @@ router.get(
   userController.getUserStakingSettings,
 )
 
+// Update user's staking settings
+router.put(
+  "/:walletAddress/staking-settings",
+  param("walletAddress").isString().notEmpty(),
+  userController.updateUserStakingSettings,
+)
+
 // Upload profile avatar
 router.post("/upload-avatar", uploadMiddleware.single("avatar"), userController.uploadAvatar)
 
