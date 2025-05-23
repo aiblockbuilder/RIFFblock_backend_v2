@@ -16,7 +16,7 @@ export default (sequelize: Sequelize, dataTypes: typeof DataTypes) => {
 
         static associate(models: any) {
             // Associations are defined in User and Riff models
-            Favorite.belongsTo(models.User, { foreignKey: 'userId' })
+            Favorite.belongsTo(models.User, { foreignKey: 'userId', as: 'users' })
             Favorite.belongsTo(models.Riff, { foreignKey: 'riffId', as: 'riffs' }) // alias must match `.as` in include
         }
     }

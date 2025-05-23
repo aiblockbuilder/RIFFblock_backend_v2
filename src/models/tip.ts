@@ -28,9 +28,9 @@ export default (sequelize: Sequelize, dataTypes: typeof DataTypes) => {
 
     static associate(models: any) {
       // Define associations here
-      Tip.belongsTo(models.User, { foreignKey: "userId", as: "user" })
+      Tip.belongsTo(models.User, { foreignKey: "userId", as: "users" })
       Tip.belongsTo(models.User, { foreignKey: "recipientId", as: "recipient" })
-      Tip.belongsTo(models.Riff, { foreignKey: "riffId", as: "riff" })
+      Tip.belongsTo(models.Riff, { foreignKey: "riffId", as: "riffs" })
     }
   }
 
