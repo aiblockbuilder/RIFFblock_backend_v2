@@ -28,8 +28,8 @@ export default (sequelize: Sequelize, dataTypes: typeof DataTypes) => {
 
     static associate(models: any) {
       // Define associations here
-      Stake.belongsTo(models.User, { foreignKey: "userId", as: "user" })
-      Stake.belongsTo(models.Riff, { foreignKey: "riffId", as: "riff" })
+      Stake.belongsTo(models.User, { foreignKey: "userId", as: "users" })
+      Stake.belongsTo(models.Riff, { foreignKey: "riffId", as: "riffs" })
     }
   }
 

@@ -33,6 +33,9 @@ router.get(
   userController.getUserCollections,
 )
 
+// Get all activity
+router.get("/all-activity", userController.getAllActivity)
+
 // Get user's activity
 router.get("/:walletAddress/activity", param("walletAddress").isString().notEmpty(), userController.getUserActivity)
 
@@ -51,6 +54,13 @@ router.get(
   "/:walletAddress/staking-settings",
   param("walletAddress").isString().notEmpty(),
   userController.getUserStakingSettings,
+)
+
+// Update user's staking settings
+router.put(
+  "/:walletAddress/staking-settings",
+  param("walletAddress").isString().notEmpty(),
+  userController.updateUserStakingSettings,
 )
 
 // Upload profile avatar

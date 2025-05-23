@@ -2,6 +2,7 @@ import type { Request, Response } from "express"
 import { validationResult } from "express-validator"
 import db from "../models"
 import logger from "../utils/logger"
+import { resourceUsage } from "process"
 
 const User = db.User
 const Riff = db.Riff
@@ -180,6 +181,96 @@ const userController = {
     }
   },
 
+  // Get all user activities across the platform
+  getAllActivity: async (req: Request, res: Response) => {
+    console.log("API endpoint : getAllActivity")
+
+    const { page = 0, limit = 20 } = req.query
+    const startIdx = Number.parseInt(page as string) * Number.parseInt(limit as string)
+    const endIdx = startIdx + Number.parseInt(limit as string)
+
+    try {
+      // 1. Tips (sent and received)
+      const tips = await Tip.findAll({
+        include: [
+          { model: User, as: "users" },
+          { model: User, as: "recipient" },
+          { model: Riff, as: "riffs" },
+        ],
+        order: [["createdAt", "DESC"]],
+      })
+
+      // 2. Stakes
+      const stakes = await Stake.findAll({
+        include: [
+          { model: User, as: "users" },
+          { model: Riff, as: "riffs" },
+        ],
+        order: [["createdAt", "DESC"]],
+      })
+
+      // 3. Riff Uploads
+      const riffs = await Riff.findAll({
+        include: [{ model: User, as: "creator" }],
+        order: [["createdAt", "DESC"]],
+      })
+
+      // 4. Favorites
+      const favorites = await Favorite.findAll({
+        include: [
+          { model: User, as: "users" },
+          { model: Riff, as: "riffs", include: [{ model: User, as: "creator" }] },
+        ],
+        order: [["createdAt", "DESC"]],
+      })
+
+      // Normalize activities
+      const activity = [
+        ...tips.map((tip: any) => ({
+          type: "tip",
+          riffName: tip.riffs?.title || null,
+          riffImage: tip.riffs?.coverImage || null,
+          amount: tip.amount,
+          fromUser: tip.users ? { id: tip.users.id, name: tip.users.name, avatar: tip.users.avatar } : null,
+          toUser: tip.recipient ? { id: tip.recipient.id, name: tip.recipient.name, avatar: tip.recipient.avatar } : null,
+          timestamp: tip.createdAt,
+          activityId: tip.id,
+        })),
+        ...stakes.map((stake: any) => ({
+          type: "stake",
+          riffName: stake.riffs?.title || null,
+          riffImage: stake.riffs?.coverImage || null,
+          amount: stake.amount,
+          fromUser: stake.users ? { id: stake.users.id, name: stake.users.name, avatar: stake.users.avatar } : null,
+          timestamp: stake.createdAt,
+          activityId: stake.id,
+        })),
+        ...riffs.map((riff: any) => ({
+          type: "upload",
+          riffName: riff.title,
+          riffImage: riff.coverImage,
+          fromUser: riff.creator ? { id: riff.creator.id, name: riff.creator.name, avatar: riff.creator.avatar } : null,
+          timestamp: riff.createdAt,
+          activityId: riff.id,
+        })),
+        ...favorites.map((fav: any) => ({
+          type: "favorite",
+          riffName: fav.riffs?.title || null,
+          riffImage: fav.riffs?.coverImage || null,
+          fromUser: fav.users ? { id: fav.users.id, name: fav.users.name, avatar: fav.users.avatar } : null,
+          toUser: fav.riffs?.creator ? { id: fav.riffs.creator.id, name: fav.riffs.creator.name, avatar: fav.riffs.creator.avatar } : null,
+          timestamp: fav.createdAt,
+          activityId: `${fav.users?.id || ''}-${fav.createdAt.getTime()}`,
+        })),
+      ].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+
+      return res.status(200).json(activity.slice(startIdx, endIdx))
+    } catch (error) {
+      logger.error("Error in getAllActivity:", error)
+      return res.status(500).json({ error: "Internal server error" })
+    }
+  },
+
   // Get user's activity
   getUserActivity: async (req: Request, res: Response) => {
     try {
@@ -218,19 +309,28 @@ const userController = {
         limit: 20,
       })
 
-      // Combine and sort activity
+      // Normalize and sort activity
       const activity = [
-        ...tips.map((tip) => ({
+        ...tips.map((tip: any) => ({
           type: "tip",
-          data: tip,
-          createdAt: tip.createdAt,
+          riffName: tip.riff?.title || null,
+          riffImage: tip.riff?.coverImage || null,
+          amount: tip.amount,
+          fromUser: tip.user ? { id: tip.user.id, name: tip.user.name, avatar: tip.user.avatar } : null,
+          toUser: tip.recipient ? { id: tip.recipient.id, name: tip.recipient.name, avatar: tip.recipient.avatar } : null,
+          timestamp: tip.createdAt,
+          activityId: tip.id,
         })),
-        ...stakes.map((stake) => ({
+        ...stakes.map((stake: any) => ({
           type: "stake",
-          data: stake,
-          createdAt: stake.createdAt,
+          riffName: stake.riff?.title || null,
+          riffImage: stake.riff?.coverImage || null,
+          amount: stake.amount,
+          fromUser: user ? { id: user.id, name: user.name, avatar: user.avatar } : null,
+          timestamp: stake.createdAt,
+          activityId: stake.id,
         })),
-      ].sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
+      ].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
 
       return res.status(200).json(activity)
     } catch (error) {
@@ -248,42 +348,146 @@ const userController = {
       }
 
       const { walletAddress } = req.params
+      const TippingTier = db.TippingTier
 
       // Find user
       const user = await User.findOne({ where: { walletAddress } })
-
       if (!user) {
         return res.status(404).json({ error: "User not found" })
       }
 
-      // Mock tipping tiers for now
-      const tippingTiers = [
-        {
-          id: 1,
-          name: "Supporter",
-          amount: 100,
-          description: "Access to exclusive behind-the-scenes content and early previews of upcoming riffs.",
-          perks: ["Exclusive updates", "Early access to new riffs"],
-        },
-        {
-          id: 2,
-          name: "Enthusiast",
-          amount: 250,
-          description: "All previous perks plus access to private livestreams and unreleased demo riffs.",
-          perks: ["Private livestreams", "Unreleased demos", "Monthly Q&A"],
-        },
-        {
-          id: 3,
-          name: "Patron",
-          amount: 500,
-          description: "All previous perks plus personalized feedback on your own music and exclusive collaborations.",
-          perks: ["Personalized feedback", "Exclusive collaborations", "Discord role"],
-        },
-      ]
-
-      return res.status(200).json(tippingTiers)
+      // Try to get user-specific tiers
+      let tiers = await TippingTier.findAll({ where: { userId: user.id }, order: [["amount", "ASC"]] })
+      // Fallback to global tiers if none found
+      if (!tiers || tiers.length === 0) {
+        tiers = await TippingTier.findAll({ where: { userId: null }, order: [["amount", "ASC"]] })
+      }
+      return res.status(200).json(tiers)
     } catch (error) {
       logger.error("Error in getUserTippingTiers:", error)
+      return res.status(500).json({ error: "Internal server error" })
+    }
+  },
+
+  // Create a tipping tier
+  createTippingTier: async (req: Request, res: Response) => {
+    try {
+      const errors = validationResult(req)
+      if (!errors.isEmpty()) {
+        return res.status(400).json({ errors: errors.array() })
+      }
+      const { walletAddress } = req.body
+      const { name, amount, description, perks } = req.body
+      const TippingTier = db.TippingTier
+      // Find user
+      const user = await User.findOne({ where: { walletAddress } })
+      if (!user) {
+        return res.status(404).json({ error: "User not found" })
+      }
+      const newTier = await TippingTier.create({ userId: user.id, name, amount, description, perks })
+      return res.status(201).json({ message: "Tipping tier created successfully", tier: newTier })
+    } catch (error) {
+      logger.error("Error in createTippingTier:", error)
+      return res.status(500).json({ error: "Internal server error" })
+    }
+  },
+
+  // Update a tipping tier
+  updateTippingTier: async (req: Request, res: Response) => {
+    try {
+      const errors = validationResult(req)
+      if (!errors.isEmpty()) {
+        return res.status(400).json({ errors: errors.array() })
+      }
+      const { id } = req.params
+      const { name, amount, description, perks } = req.body
+      const TippingTier = db.TippingTier
+      const tier = await TippingTier.findByPk(id)
+      if (!tier) {
+        return res.status(404).json({ error: "Tipping tier not found" })
+      }
+      await tier.update({ name, amount, description, perks })
+      return res.status(200).json({ message: "Tipping tier updated successfully", tier })
+    } catch (error) {
+      logger.error("Error in updateTippingTier:", error)
+      return res.status(500).json({ error: "Internal server error" })
+    }
+  },
+
+  // Get user's staking settings
+  getUserStakingSettings: async (req: Request, res: Response) => {
+    try {
+      const errors = validationResult(req)
+      if (!errors.isEmpty()) {
+        return res.status(400).json({ errors: errors.array() })
+      }
+      const { walletAddress } = req.params
+      const StakingSetting = db.StakingSetting
+      // Find user
+      const user = await User.findOne({ where: { walletAddress } })
+      if (!user) {
+        return res.status(404).json({ error: "User not found" })
+      }
+      // Try to get user-specific settings
+      let settings = await StakingSetting.findOne({ where: { userId: user.id } })
+      // Fallback to global settings if not found
+      if (!settings) {
+        settings = await StakingSetting.findOne({ where: { userId: null } })
+      }
+      return res.status(200).json(settings)
+    } catch (error) {
+      logger.error("Error in getUserStakingSettings:", error)
+      return res.status(500).json({ error: "Internal server error" })
+    }
+  },
+
+  // Create staking settings
+  createStakingSettings: async (req: Request, res: Response) => {
+    try {
+      const errors = validationResult(req)
+      if (!errors.isEmpty()) {
+        return res.status(400).json({ errors: errors.array() })
+      }
+      const { walletAddress } = req.body
+      const { defaultStakingEnabled, defaultRoyaltyShare, lockPeriodDays, minimumStakeAmount } = req.body
+      const StakingSetting = db.StakingSetting
+      // Find user
+      const user = await User.findOne({ where: { walletAddress } })
+      if (!user) {
+        return res.status(404).json({ error: "User not found" })
+      }
+      const newSettings = await StakingSetting.create({ userId: user.id, defaultStakingEnabled, defaultRoyaltyShare, lockPeriodDays, minimumStakeAmount })
+      return res.status(201).json({ message: "Staking settings created successfully", settings: newSettings })
+    } catch (error) {
+      logger.error("Error in createStakingSettings:", error)
+      return res.status(500).json({ error: "Internal server error" })
+    }
+  },
+
+  // Update user's staking settings
+  updateUserStakingSettings: async (req: Request, res: Response) => {
+    try {
+      const errors = validationResult(req)
+      if (!errors.isEmpty()) {
+        return res.status(400).json({ errors: errors.array() })
+      }
+      const { walletAddress } = req.params
+      const { defaultStakingEnabled, defaultRoyaltyShare, lockPeriodDays, minimumStakeAmount } = req.body
+      const StakingSetting = db.StakingSetting
+      // Find user
+      const user = await User.findOne({ where: { walletAddress } })
+      if (!user) {
+        return res.status(404).json({ error: "User not found" })
+      }
+      // Find user's staking settings
+      const settings = await StakingSetting.findOne({ where: { userId: user.id } })
+      if (!settings) {
+        return res.status(404).json({ error: "Staking settings not found" })
+      }
+      await settings.update({ defaultStakingEnabled, defaultRoyaltyShare, lockPeriodDays, minimumStakeAmount })
+      return res.status(200).json({ message: "Staking settings updated successfully", settings })
+    } catch (error) {
+      logger.error("Error in updateUserStakingSettings:", error)
       return res.status(500).json({ error: "Internal server error" })
     }
   },
@@ -339,38 +543,6 @@ const userController = {
       return res.status(200).json(favoritedRiffs)
     } catch (error) {
       logger.error("Error in getUserFavorites:", error)
-      return res.status(500).json({ error: "Internal server error" })
-    }
-  },
-
-  // Get user's staking settings
-  getUserStakingSettings: async (req: Request, res: Response) => {
-    try {
-      const errors = validationResult(req)
-      if (!errors.isEmpty()) {
-        return res.status(400).json({ errors: errors.array() })
-      }
-
-      const { walletAddress } = req.params
-
-      // Find user
-      const user = await User.findOne({ where: { walletAddress } })
-
-      if (!user) {
-        return res.status(404).json({ error: "User not found" })
-      }
-
-      // Mock staking settings for now
-      const stakingSettings = {
-        defaultStakingEnabled: true,
-        defaultRoyaltyShare: 50,
-        lockPeriodDays: 90,
-        minimumStakeAmount: 100,
-      }
-
-      return res.status(200).json(stakingSettings)
-    } catch (error) {
-      logger.error("Error in getUserStakingSettings:", error)
       return res.status(500).json({ error: "Internal server error" })
     }
   },

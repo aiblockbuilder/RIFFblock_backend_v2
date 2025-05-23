@@ -31,4 +31,22 @@ router.post(
   tipController.createTippingTier,
 )
 
+// Update a tipping tier
+router.put(
+  "/tiers/:id",
+  param("id").isInt(),
+  body("name").optional().isString(),
+  body("amount").optional().isNumeric(),
+  body("description").optional().isString(),
+  body("perks").optional().isArray(),
+  tipController.updateTippingTier,
+)
+
+// Delete a tipping tier
+router.delete(
+  "/tiers/:id",
+  param("id").isInt(),
+  tipController.deleteTippingTier,
+)
+
 export default router

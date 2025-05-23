@@ -9,6 +9,7 @@ import marketRoutes from "./market.routes"
 import genreRoutes from "./genre.routes"
 import tagRoutes from "./tag.routes"
 import favoriteRoutes from "./favorite.routes"
+import activityRoutes from "./activity.routes"
 
 const router = express.Router()
 
@@ -28,5 +29,6 @@ router.use("/marketplace", marketRoutes)
 router.use("/genres", genreRoutes)
 router.use("/tags", tagRoutes)
 router.use("/favorite", favoriteRoutes)
+router.use("/activity", activityRoutes)
 
 export default router
