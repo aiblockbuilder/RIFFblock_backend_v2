@@ -616,6 +616,64 @@ const userController = {
       return res.status(500).json({ error: "Internal server error" })
     }
   },
+
+  // Get the most tipped user profile
+  getMostTippedUserProfile: async (req: Request, res: Response) => {
+    console.log(">>> getMostTippedUserProfile API")
+    try {
+      const Tip = db.Tip;
+      const User = db.User;
+      const Riff = db.Riff;
+      const Stake = db.Stake;
+      // Aggregate tips by recipientId
+      const [result] = await Tip.findAll({
+        attributes: [
+          'recipientId',
+          [db.Sequelize.fn('SUM', db.Sequelize.col('amount')), 'totalTips']
+        ],
+        group: ['recipientId'],
+        order: [[db.Sequelize.fn('SUM', db.Sequelize.col('amount')), 'DESC']],
+        limit: 1,
+        raw: true
+      });
+      let user;
+      if (!result || !result.recipientId) {
+        // No tips found, return first (random) user
+        user = await User.findOne();
+        if (!user) {
+          return res.status(404).json({ error: 'No users found' });
+        }
+      } else {
+        // Get user profile
+        user = await User.findByPk(result.recipientId);
+        if (!user) {
+          return res.status(404).json({ error: 'User not found' });
+        }
+      }
+      // Find the user's most staked riff
+      const topRiffStake = await Stake.findOne({
+        where: { userId: user.id },
+        include: [{ model: Riff, as: 'riffs' }],
+        order: [[db.Sequelize.col('amount'), 'DESC']],
+      });
+      let topRiff = 'Latest Upload';
+      if (topRiffStake && topRiffStake.riffs && topRiffStake.riffs.title) {
+        topRiff = topRiffStake.riffs.title;
+      }
+      // Get total tips
+      const totalTips = (await Tip.sum('amount', { where: { recipientId: user.id } })) || 0;
+      // Return expected frontend structure
+      return res.status(200).json({
+        name: user.name || user.walletAddress,
+        image: user.avatar || '/placeholder.svg',
+        riffTips: totalTips,
+        topRiff,
+      });
+    } catch (error) {
+      logger.error('Error in getMostTippedUserProfile:', error);
+      return res.status(500).json({ error: 'Internal server error' });
+    }
+  },
 }
 
 export default userController

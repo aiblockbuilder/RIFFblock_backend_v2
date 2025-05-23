@@ -23,7 +23,7 @@ router.get(
 )
 
 // Get riff by ID
-router.get("/:id", param("id").isInt(), riffController.getRiffById)
+router.get("/riff/:id", param("id").isInt(), riffController.getRiffById)
 
 // Get riff activity
 router.get("/activity/:id", param("id").isInt(), riffController.getRiffActivity)
@@ -59,7 +59,7 @@ router.post(
 )
 
 // Mint a riff as NFT
-router.post("/:id/mint", param("id").isInt(), body("walletAddress").isString().notEmpty(), riffController.mintRiff)
+router.post("/riff/:id/mint", param("id").isInt(), body("walletAddress").isString().notEmpty(), riffController.mintRiff)
 
 // Get staking rewards for a riff
 router.get(
@@ -71,7 +71,7 @@ router.get(
 
 // Claim staking rewards
 router.post(
-  "/rewards-claim/:id/:walletAddress",
+  "/rewards-claim/riff/:id/:walletAddress",
   param("id").isInt(),
   param("walletAddress").isString().notEmpty(),
   riffController.claimRewards,
@@ -79,7 +79,7 @@ router.post(
 
 // Add riff to favorites
 router.post(
-  "/favorite/add/:id/:walletAddress",
+  "/favorite/add/riff/:id/:walletAddress",
   param("id").isInt(),
   param("walletAddress").isString().notEmpty(),
   riffController.addToFavorites,
@@ -87,10 +87,16 @@ router.post(
 
 // Remove riff from favorites
 router.post(
-  "/favorite/remove/:id/:walletAddress",
+  "/favorite/remove/riff/:id/:walletAddress",
   param("id").isInt(),
   param("walletAddress").isString().notEmpty(),
   riffController.removeFromFavorites,
 )
+
+// Get the latest uploaded riff
+router.get("/latest", riffController.getLatestRiff)
+
+// Get a random riff
+router.get("/random", riffController.getRandomRiff)
 
 export default router
