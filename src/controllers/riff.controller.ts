@@ -3,6 +3,7 @@ import { validationResult } from "express-validator"
 import db from "../models"
 import logger from "../utils/logger"
 import type { Express } from "express"
+import { pinataService } from "../services/pinata.service"
 
 // Define custom interface for request with files
 interface MulterRequest extends Request {
@@ -217,6 +218,17 @@ const riffController = {
       const audioFile = req.files.audio[0]
       const coverImage = req.files.cover ? req.files.cover[0] : null
 
+      // Upload audio to IPFS
+      const audioCid = await pinataService.uploadToIPFS(audioFile, "audio")
+      const audioUrl = pinataService.getIPFSGatewayUrl(audioCid)
+
+      // Upload cover image to IPFS if provided
+      let coverImageUrl = null
+      if (coverImage) {
+        const coverCid = await pinataService.uploadToIPFS(coverImage, "covers")
+        coverImageUrl = pinataService.getIPFSGatewayUrl(coverCid)
+      }
+
       const {
         title,
         description,
@@ -268,19 +280,21 @@ const riffController = {
         // Create new collection
         const newCollection = await Collection.create({
           name: newCollectionName,
-          description: "",
+          description: description,
           creatorId: user.id,
         })
 
         riffCollectionId = newCollection.id
       }
 
-      // Create riff
+      // Create riff with IPFS URLs
       const riff = await Riff.create({
         title,
         description,
-        audioFile: audioFile.filename,
-        coverImage: coverImage ? coverImage.filename : null,
+        audioFile: audioUrl, // Store IPFS gateway URL
+        coverImage: coverImageUrl, // Store IPFS gateway URL
+        audioCid, // Store the IPFS CID for future reference
+        coverCid: coverImage ? coverImageUrl.split('/').pop() : null, // Store the IPFS CID for future reference
         genre,
         mood,
         instrument,

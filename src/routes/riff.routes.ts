@@ -55,7 +55,7 @@ router.post(
   body("unlockPrivateMessages").optional().isBoolean(),
   body("unlockBackstageContent").optional().isBoolean(),
   body("walletAddress").isString().notEmpty(),
-  riffController.uploadRiff,
+  riffController.uploadRiff
 )
 
 // Mint a riff as NFT
