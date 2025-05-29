@@ -11,7 +11,16 @@ const collectionController = {
   // Get all collections
   getAllCollections: async (req: Request, res: Response) => {
     try {
+      const { walletAddress } = req.query
+
+      if (!walletAddress) {
+        return res.status(400).json({ error: "Wallet address is required" })
+      }
+
       const collections = await Collection.findAll({
+        where: {
+          '$creator.walletAddress$': walletAddress
+        },
         include: [{ model: User, as: "creator", attributes: ["id", "name", "walletAddress", "avatar"] }],
         order: [["createdAt", "DESC"]],
       })

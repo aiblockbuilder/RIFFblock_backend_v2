@@ -4,6 +4,13 @@ import db from "../models"
 import logger from "../utils/logger"
 import type { Express } from "express"
 
+// Define custom interface for request with files
+interface MulterRequest extends Request {
+  files?: {
+    [fieldname: string]: Express.Multer.File[]
+  }
+}
+
 const User = db.User
 const Riff = db.Riff
 const Collection = db.Collection
@@ -191,21 +198,24 @@ const riffController = {
   },
 
   // Upload a new riff
-  uploadRiff: async (req: Request, res: Response) => {
+  uploadRiff: async (req: MulterRequest, res: Response) => {
     try {
       const errors = validationResult(req)
       if (!errors.isEmpty()) {
         return res.status(400).json({ errors: errors.array() })
       }
 
-      const files = req.files as { [fieldname: string]: Express.Multer.File[] }
+      // Check if files exist in the request
+      if (!req.files) {
+        return res.status(400).json({ error: "No files uploaded" })
+      }
 
-      if (!files.audio || !files.audio[0]) {
+      if (!req.files.audio || !req.files.audio[0]) {
         return res.status(400).json({ error: "Audio file is required" })
       }
 
-      const audioFile = files.audio[0]
-      const coverImage = files.cover ? files.cover[0] : null
+      const audioFile = req.files.audio[0]
+      const coverImage = req.files.cover ? req.files.cover[0] : null
 
       const {
         title,
@@ -238,9 +248,23 @@ const riffController = {
       }
 
       // Handle collection
-      let riffCollectionId = collectionId
+      let riffCollectionId = null
 
-      if (!collectionId && newCollectionName) {
+      if (collectionId) {
+        // Check if the collection exists and belongs to the user
+        const existingCollection = await Collection.findOne({
+          where: {
+            id: collectionId,
+            creatorId: user.id,
+          },
+        })
+
+        if (!existingCollection) {
+          return res.status(404).json({ error: "Collection not found or you don't have permission to use it" })
+        }
+
+        riffCollectionId = existingCollection.id
+      } else if (newCollectionName) {
         // Create new collection
         const newCollection = await Collection.create({
           name: newCollectionName,
@@ -254,36 +278,29 @@ const riffController = {
       // Create riff
       const riff = await Riff.create({
         title,
-        description: description || "",
+        description,
         audioFile: audioFile.filename,
         coverImage: coverImage ? coverImage.filename : null,
-        duration: 0, // To be updated later
-        genre: genre || null,
-        mood: mood || null,
-        instrument: instrument || null,
-        keySignature: keySignature || null,
-        timeSignature: timeSignature || null,
+        genre,
+        mood,
+        instrument,
+        keySignature,
+        timeSignature,
         isBargainBin: isBargainBin === "true",
-        price: price || null,
-        currency: currency || "RIFF",
-        royaltyPercentage: royaltyPercentage || 10,
+        price: price ? parseFloat(price) : 0,
+        currency,
+        royaltyPercentage: royaltyPercentage ? parseInt(royaltyPercentage) : 10,
         isStakable: isStakable === "true",
-        stakingRoyaltyShare: stakingRoyaltyShare || 50,
-        isNft: false, // Not minted yet
+        stakingRoyaltyShare: stakingRoyaltyShare ? parseInt(stakingRoyaltyShare) : 50,
         unlockSourceFiles: unlockSourceFiles === "true",
         unlockRemixRights: unlockRemixRights === "true",
         unlockPrivateMessages: unlockPrivateMessages === "true",
         unlockBackstageContent: unlockBackstageContent === "true",
         creatorId: user.id,
-        collectionId: riffCollectionId || null,
+        collectionId: riffCollectionId,
       })
 
-      logger.info(`Created new riff: ${title} by user: ${walletAddress}`)
-
-      return res.status(201).json({
-        message: "Riff uploaded successfully",
-        riff,
-      })
+      return res.status(201).json(riff)
     } catch (error) {
       logger.error("Error in uploadRiff:", error)
       return res.status(500).json({ error: "Internal server error" })

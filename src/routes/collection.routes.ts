@@ -1,7 +1,7 @@
 import express from "express"
 import { body, param } from "express-validator"
 import collectionController from "../controllers/collection.controller"
-import uploadMiddleware from "../middlewares/upload.middleware"
+import { upload as uploadMiddleware } from "../middlewares/upload.middleware"
 
 const router = express.Router()
 
