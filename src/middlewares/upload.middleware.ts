@@ -20,52 +20,32 @@ if (!fs.existsSync(imageDir)) {
   fs.mkdirSync(imageDir, { recursive: true })
 }
 
-// Configure storage
-const storage = multer.diskStorage({
-  destination: (req: Request, file: Express.Multer.File, cb: (error: Error | null, destination: string) => void) => {
-    if (file.fieldname === "audio") {
-      cb(null, audioDir)
-    } else if (file.fieldname === "cover") {
-      cb(null, imageDir)
-    } else {
-      cb(new Error("Invalid field name"), "")
-    }
-  },
-  filename: (req: Request, file: Express.Multer.File, cb: (error: Error | null, filename: string) => void) => {
-    const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9)
-    const ext = path.extname(file.originalname)
-    cb(null, file.fieldname + "-" + uniqueSuffix + ext)
-  },
-})
+// Configure multer for memory storage
+const storage = multer.memoryStorage()
 
-// File filter
+// File filter to allow audio and image files
 const fileFilter = (req: Request, file: Express.Multer.File, cb: multer.FileFilterCallback) => {
-  if (file.fieldname === "audio") {
-    // Accept only audio files
+    // Check if the file is an audio file
     if (file.mimetype.startsWith("audio/")) {
-      cb(null, true)
-    } else {
-      cb(new Error("Only audio files are allowed!"))
+        cb(null, true)
     }
-  } else if (file.fieldname === "cover") {
-    // Accept only image files
-    if (file.mimetype.startsWith("image/")) {
-      cb(null, true)
-    } else {
-      cb(new Error("Only image files are allowed!"))
+    // Check if the file is an image file
+    else if (file.mimetype.startsWith("image/")) {
+        cb(null, true)
     }
-  } else {
-    cb(new Error("Invalid field name"))
-  }
+    // Reject other file types
+    else {
+        cb(new Error("Only audio and image files are allowed"))
+    }
 }
 
-// Configure multer
-const upload = multer({
-  storage: storage,
-  fileFilter: fileFilter,
-  limits: {
-    fileSize: Number.parseInt(process.env.MAX_FILE_SIZE || "25000000"), // Default 25MB
-  },
+// Configure upload middleware
+export const upload = multer({
+    storage,
+    fileFilter,
+    limits: {
+        fileSize: 25 * 1024 * 1024, // 25MB limit for audio files
+    },
 })
 
 // Add error handling middleware
@@ -81,4 +61,4 @@ const handleMulterError = (err: Error, req: Request, res: Response, next: NextFu
   next(err)
 }
 
-export { upload, handleMulterError }
+export { handleMulterError }
