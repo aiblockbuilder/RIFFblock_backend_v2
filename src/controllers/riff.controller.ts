@@ -268,7 +268,7 @@ const riffController = {
         // Create new collection
         const newCollection = await Collection.create({
           name: newCollectionName,
-          description: "",
+          description: description,
           creatorId: user.id,
         })
 
