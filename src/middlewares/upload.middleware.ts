@@ -1,7 +1,7 @@
 import multer from "multer"
 import path from "path"
 import fs from "fs"
-import type { Request, Express } from "express"
+import type { Request, Response, NextFunction } from "express"
 
 // Ensure upload directories exist
 const uploadDir = process.env.UPLOAD_DIR || "uploads"
@@ -22,14 +22,16 @@ if (!fs.existsSync(imageDir)) {
 
 // Configure storage
 const storage = multer.diskStorage({
-  destination: (req: Request, file: Express.Multer.File, cb) => {
+  destination: (req: Request, file: Express.Multer.File, cb: (error: Error | null, destination: string) => void) => {
     if (file.fieldname === "audio") {
       cb(null, audioDir)
-    } else {
+    } else if (file.fieldname === "cover") {
       cb(null, imageDir)
+    } else {
+      cb(new Error("Invalid field name"), "")
     }
   },
-  filename: (req: Request, file: Express.Multer.File, cb) => {
+  filename: (req: Request, file: Express.Multer.File, cb: (error: Error | null, filename: string) => void) => {
     const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9)
     const ext = path.extname(file.originalname)
     cb(null, file.fieldname + "-" + uniqueSuffix + ext)
@@ -45,13 +47,15 @@ const fileFilter = (req: Request, file: Express.Multer.File, cb: multer.FileFilt
     } else {
       cb(new Error("Only audio files are allowed!"))
     }
-  } else {
+  } else if (file.fieldname === "cover") {
     // Accept only image files
     if (file.mimetype.startsWith("image/")) {
       cb(null, true)
     } else {
       cb(new Error("Only image files are allowed!"))
     }
+  } else {
+    cb(new Error("Invalid field name"))
   }
 }
 
@@ -64,4 +68,17 @@ const upload = multer({
   },
 })
 
-export default upload
+// Add error handling middleware
+const handleMulterError = (err: Error, req: Request, res: Response, next: NextFunction) => {
+  if (err instanceof multer.MulterError) {
+    if (err.code === 'LIMIT_FILE_SIZE') {
+      return res.status(400).json({ 
+        error: `File too large. Maximum size is ${Number.parseInt(process.env.MAX_FILE_SIZE || "25000000") / 1000000}MB` 
+      })
+    }
+    return res.status(400).json({ error: err.message })
+  }
+  next(err)
+}
+
+export { upload, handleMulterError }

@@ -1,7 +1,7 @@
 import express from "express"
 import { body, param } from "express-validator"
 import userController from "../controllers/user.controller"
-import uploadMiddleware from "../middlewares/upload.middleware"
+import { upload as uploadMiddleware } from "../middlewares/upload.middleware"
 
 const router = express.Router()
 
@@ -25,6 +25,13 @@ router.put(
 
 // Get user's NFTs
 router.get("/profile/:walletAddress/nfts", param("walletAddress").isString().notEmpty(), userController.getUserNfts)
+
+// Get user's riffs
+router.get(
+  "/profile/:walletAddress/riffs",
+  param("walletAddress").isString().notEmpty(),
+  userController.getUserRiffs,
+)
 
 // Get user's collections
 router.get(
