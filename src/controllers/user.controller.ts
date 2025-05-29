@@ -3,6 +3,7 @@ import { validationResult } from "express-validator"
 import db from "../models"
 import logger from "../utils/logger"
 import { resourceUsage } from "process"
+import { storageService } from "../services/storage.service"
 
 const User = db.User
 const Riff = db.Riff
@@ -22,27 +23,11 @@ const userController = {
 
       const { walletAddress } = req.params
 
-      // Find or create user
-      let user = await User.findOne({ where: { walletAddress } })
+      // Find user
+      const user = await User.findOne({ where: { walletAddress } })
 
       if (!user) {
-        // Create a new user with default values
-        user = await User.create({
-          walletAddress,
-          name: `User_${walletAddress.substring(0, 6)}`,
-          bio: "Sample bio",
-          location: "USA",
-          avatar: "",
-          coverImage: "",
-          ensName: "sampleEnsName",
-          twitterUrl: "https://x.com/",
-          instagramUrl: "https://instagram.com/",
-          websiteUrl: "https://example.com",
-          genres: [],
-          influences: [],
-        })
-
-        logger.info(`Created new user for wallet address: ${walletAddress}`)
+        return res.status(404).json({ error: "User not found" })
       }
 
       // Get user stats
@@ -77,8 +62,6 @@ const userController = {
         updatedAt: user.updatedAt,
       }
 
-      // console.log(">>> response : ", response)
-
       return res.status(200).json(response)
     } catch (error) {
       logger.error("Error in getUserByWalletAddress:", error)
@@ -95,7 +78,15 @@ const userController = {
       }
 
       const { walletAddress } = req.params
-      const updateData = req.body
+      const updateData = {
+        ...req.body,
+        twitterUrl: req.body.twitter,
+        instagramUrl: req.body.instagram,
+        websiteUrl: req.body.website,
+      }
+      delete updateData.twitter
+      delete updateData.instagram
+      delete updateData.website
 
       // Find user
       const user = await User.findOne({ where: { walletAddress } })
@@ -567,14 +558,26 @@ const userController = {
         return res.status(404).json({ error: "User not found" })
       }
 
+      // Delete old avatar if exists
+      if (user.avatar) {
+        try {
+          await storageService.deleteImage(user.avatar)
+        } catch (error) {
+          logger.warn("Failed to delete old avatar:", error)
+        }
+      }
+
+      // Upload new avatar to S3
+      const avatarUrl = await storageService.uploadImage(req.file, "avatars")
+
       // Update user's avatar
-      await user.update({ avatar: req.file.filename })
+      await user.update({ avatar: avatarUrl })
 
       logger.info(`Updated avatar for user: ${walletAddress}`)
 
       return res.status(200).json({
         message: "Avatar uploaded successfully",
-        avatar: `/uploads/images/${req.file.filename}`,
+        avatar: avatarUrl,
       })
     } catch (error) {
       logger.error("Error in uploadAvatar:", error)
@@ -602,14 +605,26 @@ const userController = {
         return res.status(404).json({ error: "User not found" })
       }
 
+      // Delete old cover if exists
+      if (user.coverImage) {
+        try {
+          await storageService.deleteImage(user.coverImage)
+        } catch (error) {
+          logger.warn("Failed to delete old cover image:", error)
+        }
+      }
+
+      // Upload new cover to S3
+      const coverUrl = await storageService.uploadImage(req.file, "covers")
+
       // Update user's cover image
-      await user.update({ coverImage: req.file.filename })
+      await user.update({ coverImage: coverUrl })
 
       logger.info(`Updated cover image for user: ${walletAddress}`)
 
       return res.status(200).json({
         message: "Cover image uploaded successfully",
-        coverImage: `/uploads/images/${req.file.filename}`,
+        coverImage: coverUrl,
       })
     } catch (error) {
       logger.error("Error in uploadCover:", error)
@@ -712,6 +727,74 @@ const userController = {
       return res.status(200).json(riffs)
     } catch (error) {
       logger.error("Error in getUserRiffs:", error)
+      return res.status(500).json({ error: "Internal server error" })
+    }
+  },
+
+  // Create new user profile
+  createUser: async (req: Request, res: Response) => {
+    try {
+      const errors = validationResult(req)
+      if (!errors.isEmpty()) {
+        return res.status(400).json({ errors: errors.array() })
+      }
+
+      const { walletAddress } = req.body
+
+      // Check if user already exists
+      const existingUser = await User.findOne({ where: { walletAddress } })
+      if (existingUser) {
+        return res.status(400).json({ error: "User already exists" })
+      }
+
+      // Create new user with provided data or defaults
+      const user = await User.create({
+        walletAddress,
+        name: req.body.name || `User_${walletAddress.substring(0, 6)}`,
+        bio: req.body.bio || "",
+        location: req.body.location || "",
+        avatar: "",
+        coverImage: "",
+        ensName: "",
+        twitterUrl: req.body.twitterUrl || "",
+        instagramUrl: req.body.instagramUrl || "",
+        websiteUrl: req.body.websiteUrl || "",
+        genres: req.body.genres || [],
+        influences: req.body.influences || [],
+      })
+
+      logger.info(`Created new user for wallet address: ${walletAddress}`)
+
+      // Format response
+      const response = {
+        id: user.id,
+        walletAddress: user.walletAddress,
+        name: user.name,
+        bio: user.bio,
+        location: user.location,
+        avatar: user.avatar ? user.avatar : null,
+        coverImage: user.coverImage ? user.coverImage : null,
+        ensName: user.ensName,
+        socialLinks: {
+          twitter: user.twitterUrl,
+          instagram: user.instagramUrl,
+          website: user.websiteUrl,
+        },
+        genres: user.genres,
+        influences: user.influences,
+        stats: {
+          totalRiffs: 0,
+          totalTips: 0,
+          totalStaked: 0,
+          followers: 0,
+        },
+        createdAt: user.createdAt,
+        updatedAt: user.updatedAt,
+      }
+
+      return res.status(201).json(response)
+    } catch (error) {
+      logger.error("Error in createUser:", error)
       return res.status(500).json({ error: "Internal server error" })
     }
   },

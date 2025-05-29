@@ -1,11 +1,13 @@
-import { Model, type DataTypes, type Sequelize } from "sequelize"
+import { Model, DataTypes, Sequelize } from "sequelize"
 
 interface RiffAttributes {
   id: number
   title: string
   description: string
   audioFile: string
-  coverImage: string
+  coverImage: string | null
+  audioCid: string
+  coverCid: string | null
   duration: number
   genre: string
   mood: string
@@ -37,7 +39,9 @@ export default (sequelize: Sequelize, dataTypes: typeof DataTypes) => {
     title!: string
     description!: string
     audioFile!: string
-    coverImage!: string
+    coverImage!: string | null
+    audioCid!: string
+    coverCid!: string | null
     duration!: number
     genre!: string
     mood!: string
@@ -94,6 +98,14 @@ export default (sequelize: Sequelize, dataTypes: typeof DataTypes) => {
         allowNull: false,
       },
       coverImage: {
+        type: dataTypes.STRING,
+        allowNull: true,
+      },
+      audioCid: {
+        type: dataTypes.STRING,
+        allowNull: false,
+      },
+      coverCid: {
         type: dataTypes.STRING,
         allowNull: true,
       },
@@ -213,7 +225,7 @@ export default (sequelize: Sequelize, dataTypes: typeof DataTypes) => {
       modelName: "Riff",
       tableName: "riffs",
       timestamps: true,
-    },
+    }
   )
 
   return Riff

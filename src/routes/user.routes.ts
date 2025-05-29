@@ -8,6 +8,21 @@ const router = express.Router()
 // Get user profile by wallet address
 router.get("/profile/:walletAddress", param("walletAddress").isString().notEmpty(), userController.getUserByWalletAddress)
 
+// Create new user profile
+router.post(
+  "/profile",
+  body("walletAddress").isString().notEmpty(),
+  body("name").optional().isString(),
+  body("bio").optional().isString(),
+  body("location").optional().isString(),
+  body("twitter").optional().isURL(),
+  body("instagram").optional().isURL(),
+  body("website").optional().isURL(),
+  body("genres").optional().isArray(),
+  body("influences").optional().isArray(),
+  userController.createUser,
+)
+
 // Update user profile
 router.put(
   "/profile/:walletAddress",
@@ -15,9 +30,9 @@ router.put(
   body("name").optional().isString(),
   body("bio").optional().isString(),
   body("location").optional().isString(),
-  body("twitterUrl").optional().isURL(),
-  body("instagramUrl").optional().isURL(),
-  body("websiteUrl").optional().isURL(),
+  body("twitter").optional().isURL(),
+  body("instagram").optional().isURL(),
+  body("website").optional().isURL(),
   body("genres").optional().isArray(),
   body("influences").optional().isArray(),
   userController.updateUser,
