@@ -674,6 +674,47 @@ const userController = {
       return res.status(500).json({ error: 'Internal server error' });
     }
   },
+
+  // Get user's riffs
+  getUserRiffs: async (req: Request, res: Response) => {
+    try {
+      const errors = validationResult(req)
+      if (!errors.isEmpty()) {
+        return res.status(400).json({ errors: errors.array() })
+      }
+
+      const { walletAddress } = req.params
+      const { page = 0, limit = 10 } = req.query
+      const offset = Number.parseInt(page as string) * Number.parseInt(limit as string)
+
+      // Find user
+      const user = await User.findOne({ where: { walletAddress } })
+
+      if (!user) {
+        return res.status(404).json({ error: "User not found" })
+      }
+
+      // Get user's riffs with pagination
+      const riffs = await Riff.findAll({
+        where: { creatorId: user.id },
+        order: [["createdAt", "DESC"]],
+        limit: Number.parseInt(limit as string),
+        offset: offset,
+        include: [
+          {
+            model: Collection,
+            as: "collection",
+            attributes: ["id", "name"],
+          },
+        ],
+      })
+
+      return res.status(200).json(riffs)
+    } catch (error) {
+      logger.error("Error in getUserRiffs:", error)
+      return res.status(500).json({ error: "Internal server error" })
+    }
+  },
 }
 
 export default userController
