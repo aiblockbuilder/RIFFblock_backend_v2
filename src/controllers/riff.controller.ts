@@ -565,8 +565,9 @@ const riffController = {
         name: riff.title,
         artist: riff.creator?.name || "Unknown Artist",
         image: riff.coverImage || "/placeholder.svg",
-        waveform: riff.audioFile,
+        audioFile: riff.audioFile,
         stakedAmount: Number(totalStakeAmount),
+        duration: riff.duration,
       })
     } catch (error) {
       logger.error("Error in getLatestRiff:", error)
@@ -599,8 +600,9 @@ const riffController = {
         name: riff.title,
         artist: riff.creator?.name || "Unknown Artist",
         image: riff.coverImage || "/placeholder.svg",
-        waveform: riff.audioFile,
+        audioFile: riff.audioFile,
         stakedAmount: Number(totalStakeAmount),
+        duration: riff.duration,
       })
     } catch (error) {
       logger.error("Error in getRandomRiff:", error)
