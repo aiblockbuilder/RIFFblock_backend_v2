@@ -19,6 +19,7 @@ router.get(
   query("sortBy").optional().isString(),
   query("limit").optional().isInt({ min: 1, max: 100 }),
   query("offset").optional().isInt({ min: 0 }),
+  query("search").optional().isString(),
   riffController.getAllRiffs,
 )
 
@@ -98,5 +99,8 @@ router.get("/latest", riffController.getLatestRiff)
 
 // Get a random riff
 router.get("/random", riffController.getRandomRiff)
+
+// Get riffs uploaded within the last week
+router.get("/recent-uploads", riffController.getRecentUploads)
 
 export default router
