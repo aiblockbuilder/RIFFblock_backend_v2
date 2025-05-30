@@ -262,6 +262,7 @@ const riffController = {
         unlockPrivateMessages,
         unlockBackstageContent,
         walletAddress,
+        duration,
       } = req.body
 
       // Find user
@@ -324,6 +325,7 @@ const riffController = {
         unlockBackstageContent: unlockBackstageContent === "true",
         creatorId: user.id,
         collectionId: riffCollectionId,
+        duration: duration ? parseFloat(duration) : null, // Save duration
       })
 
       return res.status(201).json(riff)
