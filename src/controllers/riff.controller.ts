@@ -66,6 +66,18 @@ const riffController = {
         if (priceMax) filter.price[db.Sequelize.Op.lte] = priceMax
       }
 
+      // Add search filter
+      const searchQuery = req.query.search as string | undefined;
+      if (searchQuery) {
+        const searchTerm = `%${searchQuery}%`;
+        filter[db.Sequelize.Op.or] = [
+          { title: { [db.Sequelize.Op.iLike]: searchTerm } },
+          { description: { [db.Sequelize.Op.iLike]: searchTerm } },
+          // Add search by artist name - requires including User model
+          { '$creator.name$': { [db.Sequelize.Op.iLike]: searchTerm } },
+        ];
+      }
+
       // Build sort
       let order: any = [["createdAt", "DESC"]]
 
@@ -294,7 +306,7 @@ const riffController = {
         audioFile: audioUrl, // Store IPFS gateway URL
         coverImage: coverImageUrl, // Store IPFS gateway URL
         audioCid, // Store the IPFS CID for future reference
-        coverCid: coverImage ? coverImageUrl.split('/').pop() : null, // Store the IPFS CID for future reference
+        coverCid: coverImage && coverImageUrl ? coverImageUrl.split('/').pop() : null, // Store the IPFS CID for future reference
         genre,
         mood,
         instrument,
@@ -607,6 +619,34 @@ const riffController = {
     } catch (error) {
       logger.error("Error in getRandomRiff:", error)
       return res.status(500).json({ error: "Internal server error" })
+    }
+  },
+
+  // Get riffs uploaded within the last week
+  getRecentUploads: async (req: Request, res: Response) => {
+    try {
+      const oneWeekAgo = new Date();
+      oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+
+      const recentRiffs = await Riff.findAll({
+        where: {
+          createdAt: {
+            [db.Sequelize.Op.gte]: oneWeekAgo,
+          },
+        },
+        include: [
+          { model: User, as: "creator", attributes: ["id", "name", "walletAddress", "avatar"] },
+          { model: Collection, as: "collection", attributes: ["id", "name"] },
+        ],
+        order: [["createdAt", "DESC"]],
+      });
+
+      return res.status(200).json({
+        riffs: recentRiffs,
+      });
+    } catch (error) {
+      logger.error("Error in getRecentUploads:", error);
+      return res.status(500).json({ error: "Internal server error" });
     }
   },
 }
