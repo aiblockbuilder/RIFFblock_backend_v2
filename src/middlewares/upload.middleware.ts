@@ -27,23 +27,23 @@ const storage = multer.memoryStorage()
 const fileFilter = (req: Request, file: Express.Multer.File, cb: multer.FileFilterCallback) => {
     // Check if the file is an audio file
     if (file.mimetype.startsWith("audio/")) {
-        cb(null, true)
+      cb(null, true)
     }
     // Check if the file is an image file
     else if (file.mimetype.startsWith("image/")) {
-        cb(null, true)
+      cb(null, true)
     }
     // Reject other file types
     else {
         cb(new Error("Only audio and image files are allowed"))
-    }
+  }
 }
 
 // Configure upload middleware
 export const upload = multer({
     storage,
     fileFilter,
-    limits: {
+  limits: {
         fileSize: 25 * 1024 * 1024, // 25MB limit for audio files
     },
 })
