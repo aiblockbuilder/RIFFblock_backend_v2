@@ -683,6 +683,7 @@ const userController = {
         image: user.avatar || '/placeholder.svg',
         riffTips: totalTips,
         topRiff,
+        walletAddress: user.walletAddress
       });
     } catch (error) {
       logger.error('Error in getMostTippedUserProfile:', error);
