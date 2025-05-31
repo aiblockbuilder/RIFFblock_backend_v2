@@ -1,5 +1,5 @@
 import express from "express"
-import { param, query } from "express-validator"
+import { param, query, body } from "express-validator"
 import favoriteController from "../controllers/favorite.controller"
 
 const router = express.Router()
@@ -16,6 +16,8 @@ router.get(
 // Add to favorites
 router.post(
     "/add",
+    body("id").isInt(),
+    body("walletAddress").isString().notEmpty(),
     favoriteController.addToFavorites,
 )
 
