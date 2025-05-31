@@ -22,13 +22,13 @@ router.get("/health", (req, res) => {
 router.use("/users", userRoutes)
 router.use("/riffs", riffRoutes)
 router.use("/collections", collectionRoutes)
-router.use("/staking", stakeRoutes)
-router.use("/tipping", tipRoutes)
-router.use("/upload", uploadRoutes)
-router.use("/marketplace", marketRoutes)
+router.use("/stakes", stakeRoutes)
+router.use("/tips", tipRoutes)
+router.use("/uploads", uploadRoutes)
+router.use("/market", marketRoutes)
 router.use("/genres", genreRoutes)
 router.use("/tags", tagRoutes)
-router.use("/favorite", favoriteRoutes)
+router.use("/favorites", favoriteRoutes)
 router.use("/activity", activityRoutes)
 
 export default router
