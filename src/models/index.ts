@@ -3,12 +3,17 @@ import path from "path"
 import { Sequelize, DataTypes } from "sequelize"
 import config from "../config/database"
 
-const env = process.env.NODE_ENV || "development"
+type Environment = 'development' | 'test' | 'production'
+const env = (process.env.NODE_ENV || "development") as Environment
 const dbConfig = config[env]
+
+if (!dbConfig.database || !dbConfig.username || !dbConfig.password || !dbConfig.host || !dbConfig.port) {
+  throw new Error('Database configuration is incomplete')
+}
 
 const sequelize = new Sequelize(dbConfig.database, dbConfig.username, dbConfig.password, {
   host: dbConfig.host,
-  port: dbConfig.port,
+  port: parseInt(dbConfig.port),
   dialect: dbConfig.dialect,
   logging: dbConfig.logging,
   pool: dbConfig.pool,

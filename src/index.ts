@@ -15,10 +15,32 @@ const app = express()
 const PORT = process.env.PORT || 3001
 
 // Middleware
-app.use(cors())
-app.use(helmet())
-app.use(express.json())
-app.use(express.urlencoded({ extended: true }))
+app.use(cors({
+  origin: ["https://master.d3asxv52zxr30s.amplifyapp.com", "https://gateway.pinata.cloud", "https://api.pinata.cloud"],
+  methods: "GET,POST,PUT,DELETE,OPTIONS",
+  credentials: true,
+  allowedHeaders: ["Content-Type", "Authorization", "Content-Length", "X-Requested-With", "Accept", "Origin"]
+}))
+
+// Configure Helmet with more permissive settings
+app.use(helmet({
+  crossOriginResourcePolicy: { policy: "cross-origin" },
+  crossOriginEmbedderPolicy: false,
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'", "*"],
+      scriptSrc: ["'self'", "'unsafe-inline'", "*"],
+      styleSrc: ["'self'", "'unsafe-inline'", "*"],
+      imgSrc: ["'self'", "data:", "https:", "*"],
+      connectSrc: ["'self'", "*"]
+    }
+  }
+}))
+
+// Increase payload size limit to 50MB
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ extended: true, limit: '50mb' }));
+
 app.use(morgan("combined", { stream: { write: (message) => logger.info(message.trim()) } }))
 
 // Static files directory for uploads
@@ -30,6 +52,26 @@ app.use("/api", routes)
 // Error handling middleware
 app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
   logger.error(`${err.status || 500} - ${err.message} - ${req.originalUrl} - ${req.method} - ${req.ip}`)
+
+  // Handle file size errors
+  if (err.code === 'LIMIT_FILE_SIZE') {
+    return res.status(413).json({
+      error: {
+        message: 'File too large. Maximum size is 50MB',
+        status: 413,
+      },
+    });
+  }
+
+  // Handle multer errors
+  if (err.name === 'MulterError') {
+    return res.status(400).json({
+      error: {
+        message: err.message,
+        status: 400,
+      },
+    });
+  }
 
   res.status(err.status || 500).json({
     error: {
