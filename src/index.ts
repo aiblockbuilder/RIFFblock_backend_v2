@@ -16,7 +16,7 @@ const PORT = process.env.PORT || 3001
 
 // Middleware
 app.use(cors({
-  origin: ["https://master.d3asxv52zxr30s.amplifyapp.com", "https://gateway.pinata.cloud", "https://api.pinata.cloud"],
+  origin: ["https://master.d3asxv52zxr30s.amplifyapp.com", "http://localhost:3000"],
   methods: "GET,POST,PUT,DELETE,OPTIONS",
   credentials: true,
   allowedHeaders: ["Content-Type", "Authorization", "Content-Length", "X-Requested-With", "Accept", "Origin"]

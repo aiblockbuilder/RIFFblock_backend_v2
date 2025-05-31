@@ -1,6 +1,7 @@
 import { S3Client, PutObjectCommand, DeleteObjectCommand } from "@aws-sdk/client-s3"
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner"
 import logger from "../utils/logger"
+import fs from "fs"
 
 // Validate required environment variables
 const requiredEnvVars = {
@@ -31,16 +32,26 @@ const BUCKET_NAME = process.env.AWS_S3_BUCKET_NAME!
 export const storageService = {
     async uploadImage(file: Express.Multer.File, folder: string): Promise<string> {
         try {
-            if (!file || !file.buffer) {
-                throw new Error("No file or file buffer provided")
+            if (!file) {
+                throw new Error("No file provided")
             }
 
             const key = `${folder}/${Date.now()}-${file.originalname}`
             
+            // Handle both buffer and disk storage
+            let fileContent: Buffer | fs.ReadStream
+            if (file.buffer) {
+                fileContent = file.buffer
+            } else if (file.path) {
+                fileContent = fs.createReadStream(file.path)
+            } else {
+                throw new Error("File has neither buffer nor path")
+            }
+            
             const command = new PutObjectCommand({
                 Bucket: BUCKET_NAME,
                 Key: key,
-                Body: file.buffer,
+                Body: fileContent,
                 ContentType: file.mimetype,
             })
 
