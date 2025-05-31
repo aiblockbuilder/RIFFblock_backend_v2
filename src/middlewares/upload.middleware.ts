@@ -20,40 +20,57 @@ if (!fs.existsSync(imageDir)) {
   fs.mkdirSync(imageDir, { recursive: true })
 }
 
-// Configure multer for memory storage
-const storage = multer.memoryStorage()
+// Configure multer for disk storage
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    // Determine the destination based on file type
+    const dest = file.mimetype.startsWith('audio/') ? audioDir : imageDir;
+    cb(null, dest);
+  },
+  filename: function (req, file, cb) {
+    // Generate unique filename
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname));
+  }
+});
 
 // File filter to allow audio and image files
 const fileFilter = (req: Request, file: Express.Multer.File, cb: multer.FileFilterCallback) => {
-    // Check if the file is an audio file
-    if (file.mimetype.startsWith("audio/")) {
-      cb(null, true)
-    }
-    // Check if the file is an image file
-    else if (file.mimetype.startsWith("image/")) {
-      cb(null, true)
-    }
-    // Reject other file types
-    else {
-        cb(new Error("Only audio and image files are allowed"))
+  // Check if the file is an audio file
+  if (file.mimetype.startsWith("audio/")) {
+    cb(null, true)
+  }
+  // Check if the file is an image file
+  else if (file.mimetype.startsWith("image/")) {
+    cb(null, true)
+  }
+  // Reject other file types
+  else {
+    cb(new Error("Only audio and image files are allowed"))
   }
 }
 
 // Configure upload middleware
 export const upload = multer({
-    storage,
-    fileFilter,
+  storage: storage,
+  fileFilter: fileFilter,
   limits: {
-        fileSize: 25 * 1024 * 1024, // 25MB limit for audio files
-    },
+    fileSize: 50 * 1024 * 1024, // 50MB limit for files
+    files: 2 // Maximum 2 files (audio and cover)
+  },
 })
 
 // Add error handling middleware
-const handleMulterError = (err: Error, req: Request, res: Response, next: NextFunction) => {
+export const handleMulterError = (err: Error, req: Request, res: Response, next: NextFunction) => {
   if (err instanceof multer.MulterError) {
     if (err.code === 'LIMIT_FILE_SIZE') {
+      return res.status(413).json({ 
+        error: `File too large. Maximum size is 50MB` 
+      })
+    }
+    if (err.code === 'LIMIT_FILE_COUNT') {
       return res.status(400).json({ 
-        error: `File too large. Maximum size is ${Number.parseInt(process.env.MAX_FILE_SIZE || "25000000") / 1000000}MB` 
+        error: `Too many files. Maximum is 2 files (audio and cover)` 
       })
     }
     return res.status(400).json({ error: err.message })
@@ -61,4 +78,30 @@ const handleMulterError = (err: Error, req: Request, res: Response, next: NextFu
   next(err)
 }
 
-export { handleMulterError }
+// Add file validation middleware
+export const validateFiles = (req: Request, res: Response, next: NextFunction) => {
+  if (!req.files) {
+    return res.status(400).json({ error: "No files uploaded" });
+  }
+
+  const files = req.files as { [fieldname: string]: Express.Multer.File[] };
+  
+  if (!files.audio || files.audio.length === 0) {
+    return res.status(400).json({ error: "Audio file is required" });
+  }
+
+  const audioFile = files.audio[0];
+  if (!audioFile.mimetype.startsWith('audio/')) {
+    return res.status(400).json({ error: "Invalid audio file type" });
+  }
+
+  if (files.cover && files.cover.length > 0) {
+    const coverFile = files.cover[0];
+    if (!coverFile.mimetype.startsWith('image/')) {
+      return res.status(400).json({ error: "Invalid cover image type" });
+    }
+  }
+
+  next();
+}
+

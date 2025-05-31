@@ -1,6 +1,7 @@
 import axios from "axios"
 import FormData from "form-data"
 import logger from "../utils/logger"
+import fs from "fs"
 
 // Validate required environment variables
 const requiredEnvVars = {
@@ -22,15 +23,26 @@ const PINATA_API_SECRET = process.env.PINATA_API_SECRET!
 export const pinataService = {
     async uploadToIPFS(file: Express.Multer.File, folder: string): Promise<string> {
         try {
-            if (!file || !file.buffer) {
-                throw new Error("No file or file buffer provided")
+            if (!file) {
+                throw new Error("No file provided")
             }
 
             const formData = new FormData()
-            formData.append('file', file.buffer, {
-                filename: file.originalname,
-                contentType: file.mimetype,
-            })
+            
+            // Handle both buffer and disk storage
+            if (file.buffer) {
+                formData.append('file', file.buffer, {
+                    filename: file.originalname,
+                    contentType: file.mimetype,
+                })
+            } else if (file.path) {
+                formData.append('file', fs.createReadStream(file.path), {
+                    filename: file.originalname,
+                    contentType: file.mimetype,
+                })
+            } else {
+                throw new Error("File has neither buffer nor path")
+            }
 
             // Add metadata
             const metadata = JSON.stringify({

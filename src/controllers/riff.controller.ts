@@ -2,7 +2,7 @@ import type { Request, Response } from "express"
 import { validationResult } from "express-validator"
 import db from "../models"
 import logger from "../utils/logger"
-import type { Express } from "express"
+import type { Multer } from "multer"
 import { pinataService } from "../services/pinata.service"
 
 // Define custom interface for request with files
@@ -219,16 +219,12 @@ const riffController = {
       }
 
       // Check if files exist in the request
-      if (!req.files) {
+      if (!req.files || !('audio' in req.files)) {
         return res.status(400).json({ error: "No files uploaded" })
       }
 
-      if (!req.files.audio || !req.files.audio[0]) {
-        return res.status(400).json({ error: "Audio file is required" })
-      }
-
       const audioFile = req.files.audio[0]
-      const coverImage = req.files.cover ? req.files.cover[0] : null
+      const coverImage = 'cover' in req.files ? req.files.cover[0] : null
 
       // Upload audio to IPFS
       const audioCid = await pinataService.uploadToIPFS(audioFile, "audio")

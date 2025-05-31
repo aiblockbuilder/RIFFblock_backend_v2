@@ -6,9 +6,24 @@ import logger from "../utils/logger"
 const User = db.User
 const Riff = db.Riff
 
+interface Listing {
+  id: number
+  riffId: number
+  seller: {
+    id: number
+    name: string
+    walletAddress: string
+  }
+  price: number
+  currency: string
+  isActive: boolean
+  createdAt: Date
+  updatedAt: Date
+}
+
 // Mock marketplace listings
-const listings = []
-const sales = []
+const listings: Listing[] = []
+const sales: any[] = []
 
 const marketController = {
   // Get all listings

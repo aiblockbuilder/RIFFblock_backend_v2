@@ -1,7 +1,7 @@
-import express from "express"
+import express, { RequestHandler } from "express"
 import { body, param, query } from "express-validator"
 import riffController from "../controllers/riff.controller"
-import { upload as uploadMiddleware } from "../middlewares/upload.middleware"
+import { upload as uploadMiddleware, handleMulterError, validateFiles } from "../middlewares/upload.middleware"
 
 const router = express.Router()
 
@@ -36,6 +36,8 @@ router.post(
     { name: "audio", maxCount: 1 },
     { name: "cover", maxCount: 1 },
   ]),
+  handleMulterError,
+  validateFiles,
   body("title").isString().notEmpty(),
   body("description").optional().isString(),
   body("genre").optional().isString(),
@@ -56,7 +58,7 @@ router.post(
   body("unlockPrivateMessages").optional().isBoolean(),
   body("unlockBackstageContent").optional().isBoolean(),
   body("walletAddress").isString().notEmpty(),
-  riffController.uploadRiff
+  riffController.uploadRiff as RequestHandler
 )
 
 // Mint a riff as NFT
