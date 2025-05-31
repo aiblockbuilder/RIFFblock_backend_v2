@@ -766,6 +766,12 @@ const userController = {
 
       logger.info(`Created new user for wallet address: ${walletAddress}`)
 
+      // Create default staking settings for the new user
+      await db.StakingSetting.create({
+        userId: user.id,
+        // Default values for other fields will be handled by the model definition
+      });
+
       // Format response
       const response = {
         id: user.id,
