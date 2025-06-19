@@ -4,6 +4,9 @@ import stakeController from "../controllers/stake.controller"
 
 const router = express.Router()
 
+// Get user's staked riffs
+router.get("/user/:walletAddress", param("walletAddress").isString().notEmpty(), stakeController.getUserStakedRiffs)
+
 // Get NFT staking info
 router.get("/:nftId", param("nftId").isInt(), stakeController.getNftStakingInfo)
 
