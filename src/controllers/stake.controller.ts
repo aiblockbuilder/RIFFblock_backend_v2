@@ -8,6 +8,72 @@ const Riff = db.Riff
 const Stake = db.Stake
 
 const stakeController = {
+  // Get user's staked riffs
+  getUserStakedRiffs: async (req: Request, res: Response) => {
+    try {
+      const errors = validationResult(req)
+      if (!errors.isEmpty()) {
+        return res.status(400).json({ errors: errors.array() })
+      }
+
+      const { walletAddress } = req.params
+
+      // Find user
+      const user = await User.findOne({ where: { walletAddress } })
+
+      if (!user) {
+        return res.status(404).json({ error: "User not found" })
+      }
+
+      // Get all stakes for this user with riff information
+      const stakes = await Stake.findAll({
+        where: { userId: user.id },
+        include: [
+          {
+            model: Riff,
+            as: "riffs",
+            include: [
+              {
+                model: User,
+                as: "creator",
+                attributes: ["id", "name", "walletAddress"],
+              },
+            ],
+          },
+        ],
+        order: [["stakedAt", "DESC"]],
+      })
+
+      // Transform the data to match the expected frontend format
+      const stakedRiffs = stakes.map((stake: any) => {
+        const riff = stake.riffs
+        const creator = riff.creator
+        
+        // Determine status based on unlock date
+        const now = new Date()
+        const isUnlocked = now >= stake.unlockAt || stake.isUnlocked
+        const status = isUnlocked ? "unlocked" : "locked"
+
+        return {
+          id: `staked-${stake.id}`,
+          title: riff.title,
+          artist: creator.name || `user_${creator.walletAddress.substring(2, 8)}`,
+          image: riff.coverImage || "/placeholder.svg",
+          stakedAmount: parseFloat(stake.amount.toString()),
+          stakedDate: stake.stakedAt.toISOString().split('T')[0], // Format as YYYY-MM-DD
+          unlockDate: stake.unlockAt.toISOString().split('T')[0], // Format as YYYY-MM-DD
+          royaltiesEarned: parseFloat(stake.royaltiesEarned.toString()),
+          status,
+        }
+      })
+
+      return res.status(200).json(stakedRiffs)
+    } catch (error) {
+      logger.error("Error in getUserStakedRiffs:", error)
+      return res.status(500).json({ error: "Internal server error" })
+    }
+  },
+
   // Get NFT staking info
   getNftStakingInfo: async (req: Request, res: Response) => {
     try {
