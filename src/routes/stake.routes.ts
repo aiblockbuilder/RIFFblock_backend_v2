@@ -15,7 +15,7 @@ router.post(
   "/stake/:nftId/:walletAddress",
   param("nftId").isInt(),
   param("walletAddress").isString().notEmpty(),
-  body("amount").isNumeric(),
+  body("amount").isFloat({ min: 0.01 }),
   stakeController.stakeOnNft,
 )
 

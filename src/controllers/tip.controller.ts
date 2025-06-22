@@ -19,6 +19,11 @@ const tipController = {
 
       const { senderWalletAddress, recipientWalletAddress, riffId, amount, currency, message, tierId } = req.body
 
+      // Check if sender is trying to tip themselves
+      if (senderWalletAddress.toLowerCase() === recipientWalletAddress.toLowerCase()) {
+        return res.status(400).json({ error: "Cannot tip yourself" })
+      }
+
       // Find sender
       const sender = await User.findOne({ where: { walletAddress: senderWalletAddress } })
 
@@ -166,6 +171,45 @@ const tipController = {
       return res.status(200).json({ message: "Tipping tier deleted successfully" })
     } catch (error) {
       logger.error("Error in deleteTippingTier:", error)
+      return res.status(500).json({ error: "Internal server error" })
+    }
+  },
+
+  // Get all tipping tiers from all users (for invest page)
+  getAllTippingTiers: async (req: Request, res: Response) => {
+    try {
+      // Get all tipping tiers with user information
+      const tiers = await TippingTier.findAll({
+        include: [
+          {
+            model: User,
+            as: 'user',
+            attributes: ['id', 'name', 'walletAddress', 'avatar'],
+            required: false // Include tiers even if user is null (global tiers)
+          }
+        ],
+        order: [["amount", "ASC"]],
+        where: {
+          userId: { [db.Sequelize.Op.ne]: null } // Only get user-specific tiers, not global ones
+        }
+      })
+
+      // Transform the data to match frontend expectations
+      const transformedTiers = tiers.map((tier: any) => ({
+        id: tier.id,
+        name: tier.name,
+        amount: tier.amount,
+        description: tier.description,
+        perks: tier.perks || [],
+        artist: tier.user?.name || tier.user?.walletAddress || 'Unknown Artist',
+        artistImage: tier.user?.avatar || '/placeholder.svg',
+        artistWalletAddress: tier.user?.walletAddress || null,
+        image: '/unused-idea.png' // Default image for tiers
+      }))
+
+      return res.status(200).json(transformedTiers)
+    } catch (error) {
+      logger.error("Error in getAllTippingTiers:", error)
       return res.status(500).json({ error: "Internal server error" })
     }
   },
