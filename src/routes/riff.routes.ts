@@ -105,4 +105,7 @@ router.get("/random", riffController.getRandomRiff)
 // Get riffs uploaded within the last week
 router.get("/recent-uploads", riffController.getRecentUploads)
 
+// Get stakable riffs for featured section
+router.get("/stakable", riffController.getStakableRiffs)
+
 export default router
