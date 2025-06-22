@@ -147,6 +147,11 @@ const stakeController = {
         return res.status(400).json({ error: "Riff is not stakable" })
       }
 
+      // Check if user is trying to stake on their own riff
+      if (riff.creatorId === user.id) {
+        return res.status(400).json({ error: "Cannot stake on your own riff" })
+      }
+
       // Check if user already has a stake
       const existingStake = await Stake.findOne({
         where: {

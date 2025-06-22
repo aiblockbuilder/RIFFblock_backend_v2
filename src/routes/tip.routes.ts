@@ -17,6 +17,9 @@ router.post(
   tipController.sendTip,
 )
 
+// Get all tipping tiers from all users (for invest page)
+router.get("/tiers", tipController.getAllTippingTiers)
+
 // Get tipping tiers for an artist
 router.get("/tiers/:walletAddress", param("walletAddress").isString().notEmpty(), tipController.getTippingTiers)
 

@@ -623,10 +623,10 @@ const riffController = {
   // Get riffs uploaded within the last week
   getRecentUploads: async (req: Request, res: Response) => {
     try {
-      const oneWeekAgo = new Date();
-      oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+      const oneWeekAgo = new Date()
+      oneWeekAgo.setDate(oneWeekAgo.getDate() - 7)
 
-      const recentRiffs = await Riff.findAll({
+      const riffs = await Riff.findAll({
         where: {
           createdAt: {
             [db.Sequelize.Op.gte]: oneWeekAgo,
@@ -634,17 +634,64 @@ const riffController = {
         },
         include: [
           { model: User, as: "creator", attributes: ["id", "name", "walletAddress", "avatar"] },
-          { model: Collection, as: "collection", attributes: ["id", "name"] },
         ],
         order: [["createdAt", "DESC"]],
-      });
+        limit: 10,
+      })
 
-      return res.status(200).json({
-        riffs: recentRiffs,
-      });
+      return res.status(200).json(riffs)
     } catch (error) {
-      logger.error("Error in getRecentUploads:", error);
-      return res.status(500).json({ error: "Internal server error" });
+      logger.error("Error in getRecentUploads:", error)
+      return res.status(500).json({ error: "Internal server error" })
+    }
+  },
+
+  // Get stakable riffs for featured section
+  getStakableRiffs: async (req: Request, res: Response) => {
+    try {
+      // Get all stakable riffs with creator info and stake data
+      const riffs = await Riff.findAll({
+        where: {
+          isStakable: true,
+        },
+        include: [
+          { model: User, as: "creator", attributes: ["id", "name", "walletAddress", "avatar"] },
+        ],
+        order: [["createdAt", "DESC"]],
+        limit: 20,
+      })
+
+      // Transform data to match frontend format and calculate stake info
+      const stakableRiffs = await Promise.all(
+        riffs.map(async (riff: any) => {
+          // Get total staked amount for this riff
+          const totalStakedAmount = (await Stake.sum("amount", { where: { riffId: riff.id } })) || 0
+          
+          // Calculate max pool (use stored value or default)
+          const maxPool = riff.maxPool || 50000
+          
+          // Format duration
+          const duration = riff.duration ? `${Math.floor(riff.duration / 60)}:${String(Math.floor(riff.duration % 60)).padStart(2, '0')}` : "0:00"
+          
+          return {
+            id: `riff-${riff.id}`,
+            title: riff.title,
+            artist: riff.creator.name || `user_${riff.creator.walletAddress.substring(2, 8)}`,
+            artistImage: riff.creator.avatar || "/placeholder.svg",
+            artistWalletAddress: riff.creator.walletAddress,
+            image: riff.coverImage || "/placeholder.svg",
+            stakedAmount: Math.floor(totalStakedAmount),
+            maxPool: maxPool,
+            royaltyShare: riff.stakingRoyaltyShare || 15,
+            duration: duration,
+          }
+        })
+      )
+
+      return res.status(200).json(stakableRiffs)
+    } catch (error) {
+      logger.error("Error in getStakableRiffs:", error)
+      return res.status(500).json({ error: "Internal server error" })
     }
   },
 }
