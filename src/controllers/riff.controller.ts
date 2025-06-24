@@ -19,6 +19,7 @@ const Stake = db.Stake
 const Tip = db.Tip
 const Tag = db.Tag
 const RiffTag = db.RiffTag
+const StakingSetting = db.StakingSetting
 
 const riffController = {
   // Get all riffs with filtering
@@ -259,6 +260,9 @@ const riffController = {
         unlockBackstageContent,
         walletAddress,
         duration,
+        minimumStakeAmount,
+        lockPeriodDays,
+        useProfileDefaults,
       } = req.body
 
       // Find user
@@ -296,6 +300,24 @@ const riffController = {
         riffCollectionId = newCollection.id
       }
 
+      // Handle staking settings
+      let finalStakingRoyaltyShare = stakingRoyaltyShare ? parseInt(stakingRoyaltyShare) : 50
+      let finalMinimumStakeAmount = minimumStakeAmount ? parseInt(minimumStakeAmount) : 100
+      let finalLockPeriodDays = lockPeriodDays ? parseInt(lockPeriodDays) : 30
+
+      // If using profile defaults, fetch user's staking settings
+      if (useProfileDefaults === "true") {
+        const userStakingSettings = await StakingSetting.findOne({
+          where: { userId: user.id }
+        })
+
+        if (userStakingSettings) {
+          finalStakingRoyaltyShare = userStakingSettings.defaultRoyaltyShare
+          finalMinimumStakeAmount = userStakingSettings.minimumStakeAmount
+          finalLockPeriodDays = userStakingSettings.lockPeriodDays
+        }
+      }
+
       // Create riff with IPFS URLs
       const riff = await Riff.create({
         title,
@@ -314,7 +336,11 @@ const riffController = {
         currency,
         royaltyPercentage: royaltyPercentage ? parseInt(royaltyPercentage) : 10,
         isStakable: isStakable === "true",
-        stakingRoyaltyShare: stakingRoyaltyShare ? parseInt(stakingRoyaltyShare) : 50,
+        stakingRoyaltyShare: finalStakingRoyaltyShare,
+        minimumStakeAmount: finalMinimumStakeAmount,
+        lockPeriodDays: finalLockPeriodDays,
+        useProfileDefaults: useProfileDefaults === "true",
+        maxPool: 50000, // Set default maxPool to 50000
         unlockSourceFiles: unlockSourceFiles === "true",
         unlockRemixRights: unlockRemixRights === "true",
         unlockPrivateMessages: unlockPrivateMessages === "true",
