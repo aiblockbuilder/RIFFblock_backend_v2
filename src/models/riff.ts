@@ -21,6 +21,9 @@ interface RiffAttributes {
   isStakable: boolean
   stakingRoyaltyShare: number
   maxPool: number | null
+  minimumStakeAmount: number | null
+  lockPeriodDays: number | null
+  useProfileDefaults: boolean
   isNft: boolean
   tokenId: string
   contractAddress: string
@@ -56,6 +59,9 @@ export default (sequelize: Sequelize, dataTypes: typeof DataTypes) => {
     isStakable!: boolean
     stakingRoyaltyShare!: number
     maxPool!: number | null
+    minimumStakeAmount!: number | null
+    lockPeriodDays!: number | null
+    useProfileDefaults!: boolean
     isNft!: boolean
     tokenId!: string
     contractAddress!: string
@@ -167,6 +173,19 @@ export default (sequelize: Sequelize, dataTypes: typeof DataTypes) => {
       maxPool: {
         type: dataTypes.INTEGER,
         allowNull: true,
+      },
+      minimumStakeAmount: {
+        type: dataTypes.INTEGER,
+        allowNull: true,
+      },
+      lockPeriodDays: {
+        type: dataTypes.INTEGER,
+        allowNull: true,
+      },
+      useProfileDefaults: {
+        type: dataTypes.BOOLEAN,
+        allowNull: false,
+        defaultValue: false,
       },
       isNft: {
         type: dataTypes.BOOLEAN,
