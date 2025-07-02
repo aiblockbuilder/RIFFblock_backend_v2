@@ -212,30 +212,11 @@ const riffController = {
   },
 
   // Upload a new riff
-  uploadRiff: async (req: MulterRequest, res: Response) => {
+  uploadRiff: async (req: Request, res: Response) => {
     try {
       const errors = validationResult(req)
       if (!errors.isEmpty()) {
         return res.status(400).json({ errors: errors.array() })
-      }
-
-      // Check if files exist in the request
-      if (!req.files || !('audio' in req.files)) {
-        return res.status(400).json({ error: "No files uploaded" })
-      }
-
-      const audioFile = req.files.audio[0]
-      const coverImage = 'cover' in req.files ? req.files.cover[0] : null
-
-      // Upload audio to IPFS
-      const audioCid = await pinataService.uploadToIPFS(audioFile, "audio")
-      const audioUrl = pinataService.getIPFSGatewayUrl(audioCid)
-
-      // Upload cover image to IPFS if provided
-      let coverImageUrl = null
-      if (coverImage) {
-        const coverCid = await pinataService.uploadToIPFS(coverImage, "covers")
-        coverImageUrl = pinataService.getIPFSGatewayUrl(coverCid)
       }
 
       const {
@@ -263,7 +244,20 @@ const riffController = {
         minimumStakeAmount,
         lockPeriodDays,
         useProfileDefaults,
+        // IPFS data from frontend
+        audioCid,
+        coverCid,
+        metadataUrl,
+        // NFT data if minted
+        isNft,
+        tokenId,
+        contractAddress,
       } = req.body
+
+      // Validate required IPFS data
+      if (!audioCid) {
+        return res.status(400).json({ error: "Audio CID is required" })
+      }
 
       // Find user
       const user = await User.findOne({ where: { walletAddress } })
@@ -318,14 +312,19 @@ const riffController = {
         }
       }
 
-      // Create riff with IPFS URLs
+      // Generate IPFS gateway URLs
+      const audioUrl = `https://gateway.pinata.cloud/ipfs/${audioCid}`
+      const coverImageUrl = coverCid ? `https://gateway.pinata.cloud/ipfs/${coverCid}` : null
+
+      // Create riff with IPFS data from frontend
       const riff = await Riff.create({
         title,
         description,
         audioFile: audioUrl, // Store IPFS gateway URL
         coverImage: coverImageUrl, // Store IPFS gateway URL
-        audioCid, // Store the IPFS CID for future reference
-        coverCid: coverImage && coverImageUrl ? coverImageUrl.split('/').pop() : null, // Store the IPFS CID for future reference
+        audioCid, // Store the IPFS CID
+        coverCid, // Store the IPFS CID
+        metadataUrl, // Store the metadata URL (ipfs://{cid})
         genre,
         mood,
         instrument,
@@ -348,6 +347,10 @@ const riffController = {
         creatorId: user.id,
         collectionId: riffCollectionId,
         duration: duration ? parseFloat(duration) : null, // Save duration
+        // NFT data if minted
+        isNft: isNft === "true",
+        tokenId: tokenId || null,
+        contractAddress: contractAddress || null,
       })
 
       return res.status(201).json(riff)

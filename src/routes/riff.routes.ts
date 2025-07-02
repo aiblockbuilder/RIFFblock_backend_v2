@@ -32,12 +32,6 @@ router.get("/activity/:id", param("id").isInt(), riffController.getRiffActivity)
 // Upload a new riff
 router.post(
   "/upload",
-  uploadMiddleware.fields([
-    { name: "audio", maxCount: 1 },
-    { name: "cover", maxCount: 1 },
-  ]),
-  handleMulterError,
-  validateFiles,
   body("title").isString().notEmpty(),
   body("description").optional().isString(),
   body("genre").optional().isString(),
@@ -61,6 +55,15 @@ router.post(
   body("unlockPrivateMessages").optional().isBoolean(),
   body("unlockBackstageContent").optional().isBoolean(),
   body("walletAddress").isString().notEmpty(),
+  body("duration").optional().isNumeric(),
+  // IPFS data validation
+  body("audioCid").isString().notEmpty(),
+  body("coverCid").optional().isString(),
+  body("metadataUrl").optional().isString(),
+  // NFT data validation
+  body("isNft").optional().isBoolean(),
+  body("tokenId").optional().isString(),
+  body("contractAddress").optional().isString(),
   riffController.uploadRiff as RequestHandler
 )
 
