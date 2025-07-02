@@ -64,6 +64,7 @@ router.post(
   body("isNft").optional().isBoolean(),
   body("tokenId").optional().isString(),
   body("contractAddress").optional().isString(),
+
   riffController.uploadRiff as RequestHandler
 )
 

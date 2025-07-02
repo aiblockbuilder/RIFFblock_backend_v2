@@ -212,7 +212,9 @@ const riffController = {
   },
 
   // Upload a new riff
+
   uploadRiff: async (req: Request, res: Response) => {
+
     try {
       const errors = validationResult(req)
       if (!errors.isEmpty()) {
@@ -258,6 +260,7 @@ const riffController = {
       if (!audioCid) {
         return res.status(400).json({ error: "Audio CID is required" })
       }
+
 
       // Find user
       const user = await User.findOne({ where: { walletAddress } })
