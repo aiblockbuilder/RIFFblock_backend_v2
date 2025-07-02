@@ -8,6 +8,7 @@ interface RiffAttributes {
   coverImage: string | null
   audioCid: string
   coverCid: string | null
+  metadataUrl: string | null
   duration: number
   genre: string
   mood: string
@@ -46,6 +47,7 @@ export default (sequelize: Sequelize, dataTypes: typeof DataTypes) => {
     coverImage!: string | null
     audioCid!: string
     coverCid!: string | null
+    metadataUrl!: string | null
     duration!: number
     genre!: string
     mood!: string
@@ -114,6 +116,10 @@ export default (sequelize: Sequelize, dataTypes: typeof DataTypes) => {
         allowNull: false,
       },
       coverCid: {
+        type: dataTypes.STRING,
+        allowNull: true,
+      },
+      metadataUrl: {
         type: dataTypes.STRING,
         allowNull: true,
       },
