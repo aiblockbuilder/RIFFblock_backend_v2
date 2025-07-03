@@ -25,9 +25,9 @@ const stakeController = {
         return res.status(404).json({ error: "User not found" })
       }
 
-      // Get all stakes for this user with riff information
+      // Get all active stakes for this user with riff information
       const stakes = await Stake.findAll({
-        where: { userId: user.id },
+        where: { userId: user.id, isActive: true },
         include: [
           {
             model: Riff,
@@ -55,7 +55,9 @@ const stakeController = {
         const status = isUnlocked ? "unlocked" : "locked"
 
         return {
-          id: `staked-${stake.id}`,
+          id: stake.id,
+          riffId: riff.id,
+          tokenId: riff.tokenId, // Add token ID for smart contract calls
           title: riff.title,
           artist: creator.name || `user_${creator.walletAddress.substring(2, 8)}`,
           image: riff.coverImage || "/placeholder.svg",
@@ -177,6 +179,7 @@ const stakeController = {
         unlockAt,
         isUnlocked: false,
         royaltiesEarned: 0,
+        isActive: true,
       })
 
       logger.info(`Created stake of ${amount} RIFF on riff: ${nftId} by user: ${walletAddress}`)
@@ -237,8 +240,8 @@ const stakeController = {
       // Get royalties earned
       const royaltiesEarned = stake.royaltiesEarned
 
-      // Delete stake
-      await stake.destroy()
+      // Mark stake as inactive instead of deleting
+      await stake.update({ isActive: false })
 
       logger.info(`Unstaked from riff: ${nftId} by user: ${walletAddress}`)
 
@@ -249,6 +252,163 @@ const stakeController = {
       })
     } catch (error) {
       logger.error("Error in unstakeFromNft:", error)
+      return res.status(500).json({ error: "Internal server error" })
+    }
+  },
+
+  // Claim royalties for user's staked riffs
+  claimRoyalties: async (req: Request, res: Response) => {
+    try {
+      const errors = validationResult(req)
+      if (!errors.isEmpty()) {
+        return res.status(400).json({ errors: errors.array() })
+      }
+
+      const { walletAddress } = req.params
+      const { claimedAmounts } = req.body
+
+      // Find user
+      const user = await User.findOne({ where: { walletAddress } })
+
+      if (!user) {
+        return res.status(404).json({ error: "User not found" })
+      }
+
+      let totalClaimed = 0
+      const updatedStakes = []
+
+      // Update each stake's royaltiesEarned field
+      for (const claim of claimedAmounts) {
+        const stake = await Stake.findOne({
+          where: {
+            id: claim.stakeId,
+            userId: user.id,
+          },
+        })
+
+        if (!stake) {
+          return res.status(404).json({ error: `Stake with ID ${claim.stakeId} not found` })
+        }
+
+        // Update the royaltiesEarned field (subtract the claimed amount)
+        const newRoyaltiesEarned = Math.max(0, parseFloat(stake.royaltiesEarned.toString()) - claim.amount)
+        await stake.update({ royaltiesEarned: newRoyaltiesEarned })
+
+        totalClaimed += claim.amount
+        updatedStakes.push({
+          stakeId: stake.id,
+          previousAmount: parseFloat(stake.royaltiesEarned.toString()),
+          claimedAmount: claim.amount,
+          newAmount: newRoyaltiesEarned,
+        })
+      }
+
+      logger.info(`Claimed ${totalClaimed} RIFF royalties for user: ${walletAddress}`)
+
+      return res.status(200).json({
+        message: "Royalties claimed successfully",
+        totalClaimed,
+        updatedStakes,
+      })
+    } catch (error) {
+      logger.error("Error in claimRoyalties:", error)
+      return res.status(500).json({ error: "Internal server error" })
+    }
+  },
+
+  // Unstake from a specific stake (by stake ID)
+  unstakeFromStake: async (req: Request, res: Response) => {
+    try {
+      const errors = validationResult(req)
+      if (!errors.isEmpty()) {
+        return res.status(400).json({ errors: errors.array() })
+      }
+
+      const { stakeId, walletAddress } = req.params
+
+      // Find user
+      const user = await User.findOne({ where: { walletAddress } })
+
+      if (!user) {
+        return res.status(404).json({ error: "User not found" })
+      }
+
+      // Find stake
+      const stake = await Stake.findOne({
+        where: {
+          id: stakeId,
+          userId: user.id,
+        },
+        include: [{ model: Riff, as: "riffs" }],
+      })
+
+      if (!stake) {
+        return res.status(404).json({ error: "Stake not found" })
+      }
+
+      // Check if stake is unlocked
+      if (!stake.isUnlocked) {
+        const now = new Date()
+        if (now < stake.unlockAt) {
+          return res.status(400).json({
+            error: "Stake is still locked",
+            unlockAt: stake.unlockAt,
+          })
+        }
+
+        // Update stake to unlocked
+        await stake.update({ isUnlocked: true })
+      }
+
+      // Get stake details before marking as inactive
+      const stakeAmount = parseFloat(stake.amount.toString())
+      const royaltiesEarned = parseFloat(stake.royaltiesEarned.toString())
+      const riffTitle = stake.riffs?.title || "Unknown Riff"
+
+      // Mark stake as inactive instead of deleting
+      await stake.update({ isActive: false })
+
+      logger.info(`Unstaked from riff: ${riffTitle} (ID: ${stake.riffs?.id}) by user: ${walletAddress}`)
+
+      return res.status(200).json({
+        message: "Unstaked successfully",
+        stakeAmount,
+        royaltiesEarned,
+        riffTitle,
+      })
+    } catch (error) {
+      logger.error("Error in unstakeFromStake:", error)
+      return res.status(500).json({ error: "Internal server error" })
+    }
+  },
+
+  // Get total royalties earned from all stakes (active and inactive)
+  getTotalRoyaltiesEarned: async (req: Request, res: Response) => {
+    try {
+      const errors = validationResult(req)
+      if (!errors.isEmpty()) {
+        return res.status(400).json({ errors: errors.array() })
+      }
+
+      const { walletAddress } = req.params
+
+      // Find user
+      const user = await User.findOne({ where: { walletAddress } })
+
+      if (!user) {
+        return res.status(404).json({ error: "User not found" })
+      }
+
+      // Get total royalties from all stakes (active and inactive)
+      const totalRoyalties = await Stake.sum("royaltiesEarned", {
+        where: { userId: user.id },
+      }) || 0
+
+      return res.status(200).json({
+        totalRoyaltiesEarned: parseFloat(totalRoyalties.toString()),
+      })
+    } catch (error) {
+      logger.error("Error in getTotalRoyaltiesEarned:", error)
       return res.status(500).json({ error: "Internal server error" })
     }
   },
