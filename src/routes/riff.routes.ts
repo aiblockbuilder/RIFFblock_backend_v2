@@ -1,7 +1,6 @@
 import express, { RequestHandler } from "express"
 import { body, param, query } from "express-validator"
 import riffController from "../controllers/riff.controller"
-import { upload as uploadMiddleware, handleMulterError, validateFiles } from "../middlewares/upload.middleware"
 
 const router = express.Router()
 
@@ -42,6 +41,7 @@ router.post(
   body("isBargainBin").optional().isBoolean(),
   body("collectionId").optional().isInt(),
   body("newCollectionName").optional().isString(),
+  body("newCollectionDescription").optional().isString(),
   body("price").optional().isNumeric(),
   body("currency").optional().isString(),
   body("royaltyPercentage").optional().isInt({ min: 0, max: 100 }),
@@ -55,17 +55,26 @@ router.post(
   body("unlockPrivateMessages").optional().isBoolean(),
   body("unlockBackstageContent").optional().isBoolean(),
   body("walletAddress").isString().notEmpty(),
-  body("duration").optional().isNumeric(),
+  body("duration").optional().isNumeric().custom((value) => {
+    if (value === null || value === undefined) return true;
+    return !isNaN(parseFloat(value));
+  }),
   // IPFS data validation
   body("audioCid").isString().notEmpty(),
   body("coverCid").optional().isString(),
   body("metadataUrl").optional().isString(),
   // NFT data validation
   body("isNft").optional().isBoolean(),
-  body("tokenId").optional().isString(),
-  body("contractAddress").optional().isString(),
+  body("tokenId").optional().isString().custom((value) => {
+    if (value === null || value === undefined) return true;
+    return typeof value === 'string';
+  }),
+  body("contractAddress").optional().isString().custom((value) => {
+    if (value === null || value === undefined) return true;
+    return typeof value === 'string';
+  }),
 
-  riffController.uploadRiff as RequestHandler
+  riffController.uploadRiff,
 )
 
 // Mint a riff as NFT

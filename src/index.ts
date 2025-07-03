@@ -50,36 +50,36 @@ app.use("/uploads", express.static("uploads"))
 app.use("/api", routes)
 
 // Error handling middleware
-app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
-  logger.error(`${err.status || 500} - ${err.message} - ${req.originalUrl} - ${req.method} - ${req.ip}`)
+// app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
+//   logger.error(`${err.status || 500} - ${err.message} - ${req.originalUrl} - ${req.method} - ${req.ip}`)
 
-  // Handle file size errors
-  if (err.code === 'LIMIT_FILE_SIZE') {
-    return res.status(413).json({
-      error: {
-        message: 'File too large. Maximum size is 50MB',
-        status: 413,
-      },
-    });
-  }
+//   // Handle file size errors
+//   if (err.code === 'LIMIT_FILE_SIZE') {
+//     return res.status(413).json({
+//       error: {
+//         message: 'File too large. Maximum size is 50MB',
+//         status: 413,
+//       },
+//     });
+//   }
 
-  // Handle multer errors
-  if (err.name === 'MulterError') {
-    return res.status(400).json({
-      error: {
-        message: err.message,
-        status: 400,
-      },
-    });
-  }
+//   // Handle multer errors
+//   if (err.name === 'MulterError') {
+//     return res.status(400).json({
+//       error: {
+//         message: err.message,
+//         status: 400,
+//       },
+//     });
+//   }
 
-  res.status(err.status || 500).json({
-    error: {
-      message: err.message || "Internal Server Error",
-      status: err.status || 500,
-    },
-  })
-})
+//   res.status(err.status || 500).json({
+//     error: {
+//       message: err.message || "Internal Server Error",
+//       status: err.status || 500,
+//     },
+//   })
+// })
 
 // Database connection and server start
 db.sequelize

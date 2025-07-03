@@ -218,8 +218,17 @@ const riffController = {
     try {
       const errors = validationResult(req)
       if (!errors.isEmpty()) {
+        logger.error("Validation errors in uploadRiff:", errors.array())
         return res.status(400).json({ errors: errors.array() })
       }
+
+      console.log("Received riff upload request:", { 
+        title: req.body.title,
+        walletAddress: req.body.walletAddress,
+        audioCid: req.body.audioCid,
+        isNft: req.body.isNft,
+        tokenId: req.body.tokenId
+      })
 
       const {
         title,
@@ -298,12 +307,12 @@ const riffController = {
       }
 
       // Handle staking settings
-      let finalStakingRoyaltyShare = stakingRoyaltyShare ? parseInt(stakingRoyaltyShare) : 50
-      let finalMinimumStakeAmount = minimumStakeAmount ? parseInt(minimumStakeAmount) : 100
-      let finalLockPeriodDays = lockPeriodDays ? parseInt(lockPeriodDays) : 30
+      let finalStakingRoyaltyShare = stakingRoyaltyShare || 50
+      let finalMinimumStakeAmount = minimumStakeAmount || 100
+      let finalLockPeriodDays = lockPeriodDays || 30
 
       // If using profile defaults, fetch user's staking settings
-      if (useProfileDefaults === "true") {
+      if (useProfileDefaults) {
         const userStakingSettings = await StakingSetting.findOne({
           where: { userId: user.id }
         })
@@ -333,25 +342,25 @@ const riffController = {
         instrument,
         keySignature,
         timeSignature,
-        isBargainBin: isBargainBin === "true",
-        price: price ? parseFloat(price) : 0,
+        isBargainBin: Boolean(isBargainBin),
+        price: price || 0,
         currency,
-        royaltyPercentage: royaltyPercentage ? parseInt(royaltyPercentage) : 10,
-        isStakable: isStakable === "true",
+        royaltyPercentage: royaltyPercentage || 10,
+        isStakable: Boolean(isStakable),
         stakingRoyaltyShare: finalStakingRoyaltyShare,
         minimumStakeAmount: finalMinimumStakeAmount,
         lockPeriodDays: finalLockPeriodDays,
-        useProfileDefaults: useProfileDefaults === "true",
+        useProfileDefaults: Boolean(useProfileDefaults),
         maxPool: 50000, // Set default maxPool to 50000
-        unlockSourceFiles: unlockSourceFiles === "true",
-        unlockRemixRights: unlockRemixRights === "true",
-        unlockPrivateMessages: unlockPrivateMessages === "true",
-        unlockBackstageContent: unlockBackstageContent === "true",
+        unlockSourceFiles: Boolean(unlockSourceFiles),
+        unlockRemixRights: Boolean(unlockRemixRights),
+        unlockPrivateMessages: Boolean(unlockPrivateMessages),
+        unlockBackstageContent: Boolean(unlockBackstageContent),
         creatorId: user.id,
         collectionId: riffCollectionId,
-        duration: duration ? parseFloat(duration) : null, // Save duration
+        duration: duration || null, // Save duration
         // NFT data if minted
-        isNft: isNft === "true",
+        isNft: Boolean(isNft),
         tokenId: tokenId || null,
         contractAddress: contractAddress || null,
       })
