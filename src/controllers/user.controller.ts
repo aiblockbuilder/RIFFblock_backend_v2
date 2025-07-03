@@ -691,6 +691,48 @@ const userController = {
     }
   },
 
+  // Get trending creators sorted by uploaded riff counts
+  getTrendingCreators: async (req: Request, res: Response) => {
+    try {
+      const { limit = 10 } = req.query;
+      
+      // Use a simpler approach with subquery
+      const trendingCreators = await db.sequelize.query(`
+        SELECT 
+          u.id,
+          u."walletAddress",
+          u.name,
+          u.avatar,
+          u.bio,
+          COUNT(r.id) as "riffCount"
+        FROM users u
+        LEFT JOIN riffs r ON u.id = r."creatorId"
+        GROUP BY u.id, u."walletAddress", u.name, u.avatar, u.bio
+        HAVING COUNT(r.id) > 0
+        ORDER BY COUNT(r.id) DESC
+        LIMIT :limit
+      `, {
+        replacements: { limit: Number(limit) },
+        type: db.Sequelize.QueryTypes.SELECT
+      });
+
+      // Format response for frontend
+      const formattedCreators = trendingCreators.map((creator: any) => ({
+        id: creator.id,
+        name: creator.name || `user_${creator.walletAddress.substring(2, 8)}`,
+        image: creator.avatar || '/placeholder.svg',
+        walletAddress: creator.walletAddress,
+        riffCount: parseInt(creator.riffCount),
+        bio: creator.bio || ''
+      }));
+
+      return res.status(200).json(formattedCreators);
+    } catch (error) {
+      logger.error('Error in getTrendingCreators:', error);
+      return res.status(500).json({ error: 'Internal server error' });
+    }
+  },
+
   // Get user's riffs
   getUserRiffs: async (req: Request, res: Response) => {
     try {

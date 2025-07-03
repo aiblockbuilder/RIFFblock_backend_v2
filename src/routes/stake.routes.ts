@@ -27,4 +27,29 @@ router.post(
   stakeController.unstakeFromNft,
 )
 
+// Claim royalties for user's staked riffs
+router.post(
+  "/claim-royalties/:walletAddress",
+  param("walletAddress").isString().notEmpty(),
+  body("claimedAmounts").isArray(),
+  body("claimedAmounts.*.stakeId").isInt(),
+  body("claimedAmounts.*.amount").isFloat({ min: 0 }),
+  stakeController.claimRoyalties,
+)
+
+// Unstake from a specific stake (by stake ID)
+router.post(
+  "/unstake-stake/:stakeId/:walletAddress",
+  param("stakeId").isInt(),
+  param("walletAddress").isString().notEmpty(),
+  stakeController.unstakeFromStake,
+)
+
+// Get total royalties earned from all stakes (active and inactive)
+router.get(
+  "/total-royalties/:walletAddress",
+  param("walletAddress").isString().notEmpty(),
+  stakeController.getTotalRoyaltiesEarned,
+)
+
 export default router

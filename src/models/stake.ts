@@ -9,6 +9,7 @@ interface StakeAttributes {
   unlockAt: Date
   isUnlocked: boolean
   royaltiesEarned: number
+  isActive: boolean
   createdAt: Date
   updatedAt: Date
 }
@@ -23,6 +24,7 @@ export default (sequelize: Sequelize, dataTypes: typeof DataTypes) => {
     unlockAt!: Date
     isUnlocked!: boolean
     royaltiesEarned!: number
+    isActive!: boolean
     createdAt!: Date
     updatedAt!: Date
 
@@ -78,6 +80,11 @@ export default (sequelize: Sequelize, dataTypes: typeof DataTypes) => {
         type: dataTypes.DECIMAL(10, 2),
         allowNull: false,
         defaultValue: 0,
+      },
+      isActive: {
+        type: dataTypes.BOOLEAN,
+        allowNull: false,
+        defaultValue: true,
       },
       createdAt: {
         type: dataTypes.DATE,
