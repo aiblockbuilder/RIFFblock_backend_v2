@@ -94,4 +94,7 @@ router.post("/upload-cover", uploadMiddleware.single("cover"), userController.up
 // Get the most tipped user profile
 router.get("/most-tipped", userController.getMostTippedUserProfile)
 
+// Get trending creators sorted by uploaded riff counts
+router.get("/trending-creators", userController.getTrendingCreators)
+
 export default router
