@@ -8,6 +8,7 @@ interface RiffAttributes {
   coverImage: string | null
   audioCid: string
   coverCid: string | null
+  metadataUrl: string | null
   duration: number
   genre: string
   mood: string
@@ -20,6 +21,10 @@ interface RiffAttributes {
   royaltyPercentage: number
   isStakable: boolean
   stakingRoyaltyShare: number
+  maxPool: number | null
+  minimumStakeAmount: number | null
+  lockPeriodDays: number | null
+  useProfileDefaults: boolean
   isNft: boolean
   tokenId: string
   contractAddress: string
@@ -42,6 +47,7 @@ export default (sequelize: Sequelize, dataTypes: typeof DataTypes) => {
     coverImage!: string | null
     audioCid!: string
     coverCid!: string | null
+    metadataUrl!: string | null
     duration!: number
     genre!: string
     mood!: string
@@ -54,6 +60,10 @@ export default (sequelize: Sequelize, dataTypes: typeof DataTypes) => {
     royaltyPercentage!: number
     isStakable!: boolean
     stakingRoyaltyShare!: number
+    maxPool!: number | null
+    minimumStakeAmount!: number | null
+    lockPeriodDays!: number | null
+    useProfileDefaults!: boolean
     isNft!: boolean
     tokenId!: string
     contractAddress!: string
@@ -109,6 +119,10 @@ export default (sequelize: Sequelize, dataTypes: typeof DataTypes) => {
         type: dataTypes.STRING,
         allowNull: true,
       },
+      metadataUrl: {
+        type: dataTypes.STRING,
+        allowNull: true,
+      },
       duration: {
         type: dataTypes.FLOAT,
         allowNull: true,
@@ -161,6 +175,23 @@ export default (sequelize: Sequelize, dataTypes: typeof DataTypes) => {
         type: dataTypes.INTEGER,
         allowNull: true,
         defaultValue: 50,
+      },
+      maxPool: {
+        type: dataTypes.INTEGER,
+        allowNull: true,
+      },
+      minimumStakeAmount: {
+        type: dataTypes.INTEGER,
+        allowNull: true,
+      },
+      lockPeriodDays: {
+        type: dataTypes.INTEGER,
+        allowNull: true,
+      },
+      useProfileDefaults: {
+        type: dataTypes.BOOLEAN,
+        allowNull: false,
+        defaultValue: false,
       },
       isNft: {
         type: dataTypes.BOOLEAN,

@@ -19,6 +19,7 @@ const Stake = db.Stake
 const Tip = db.Tip
 const Tag = db.Tag
 const RiffTag = db.RiffTag
+const StakingSetting = db.StakingSetting
 
 const riffController = {
   // Get all riffs with filtering
@@ -211,31 +212,23 @@ const riffController = {
   },
 
   // Upload a new riff
-  uploadRiff: async (req: MulterRequest, res: Response) => {
+
+  uploadRiff: async (req: Request, res: Response) => {
+
     try {
       const errors = validationResult(req)
       if (!errors.isEmpty()) {
+        logger.error("Validation errors in uploadRiff:", errors.array())
         return res.status(400).json({ errors: errors.array() })
       }
 
-      // Check if files exist in the request
-      if (!req.files || !('audio' in req.files)) {
-        return res.status(400).json({ error: "No files uploaded" })
-      }
-
-      const audioFile = req.files.audio[0]
-      const coverImage = 'cover' in req.files ? req.files.cover[0] : null
-
-      // Upload audio to IPFS
-      const audioCid = await pinataService.uploadToIPFS(audioFile, "audio")
-      const audioUrl = pinataService.getIPFSGatewayUrl(audioCid)
-
-      // Upload cover image to IPFS if provided
-      let coverImageUrl = null
-      if (coverImage) {
-        const coverCid = await pinataService.uploadToIPFS(coverImage, "covers")
-        coverImageUrl = pinataService.getIPFSGatewayUrl(coverCid)
-      }
+      console.log("Received riff upload request:", { 
+        title: req.body.title,
+        walletAddress: req.body.walletAddress,
+        audioCid: req.body.audioCid,
+        isNft: req.body.isNft,
+        tokenId: req.body.tokenId
+      })
 
       const {
         title,
@@ -259,7 +252,24 @@ const riffController = {
         unlockBackstageContent,
         walletAddress,
         duration,
+        minimumStakeAmount,
+        lockPeriodDays,
+        useProfileDefaults,
+        // IPFS data from frontend
+        audioCid,
+        coverCid,
+        metadataUrl,
+        // NFT data if minted
+        isNft,
+        tokenId,
+        contractAddress,
       } = req.body
+
+      // Validate required IPFS data
+      if (!audioCid) {
+        return res.status(400).json({ error: "Audio CID is required" })
+      }
+
 
       // Find user
       const user = await User.findOne({ where: { walletAddress } })
@@ -296,32 +306,63 @@ const riffController = {
         riffCollectionId = newCollection.id
       }
 
-      // Create riff with IPFS URLs
+      // Handle staking settings
+      let finalStakingRoyaltyShare = stakingRoyaltyShare || 50
+      let finalMinimumStakeAmount = minimumStakeAmount || 100
+      let finalLockPeriodDays = lockPeriodDays || 30
+
+      // If using profile defaults, fetch user's staking settings
+      if (useProfileDefaults) {
+        const userStakingSettings = await StakingSetting.findOne({
+          where: { userId: user.id }
+        })
+
+        if (userStakingSettings) {
+          finalStakingRoyaltyShare = userStakingSettings.defaultRoyaltyShare
+          finalMinimumStakeAmount = userStakingSettings.minimumStakeAmount
+          finalLockPeriodDays = userStakingSettings.lockPeriodDays
+        }
+      }
+
+      // Generate IPFS gateway URLs
+      const audioUrl = `https://gateway.pinata.cloud/ipfs/${audioCid}`
+      const coverImageUrl = coverCid ? `https://gateway.pinata.cloud/ipfs/${coverCid}` : null
+
+      // Create riff with IPFS data from frontend
       const riff = await Riff.create({
         title,
         description,
         audioFile: audioUrl, // Store IPFS gateway URL
         coverImage: coverImageUrl, // Store IPFS gateway URL
-        audioCid, // Store the IPFS CID for future reference
-        coverCid: coverImage && coverImageUrl ? coverImageUrl.split('/').pop() : null, // Store the IPFS CID for future reference
+        audioCid, // Store the IPFS CID
+        coverCid, // Store the IPFS CID
+        metadataUrl, // Store the metadata URL (ipfs://{cid})
         genre,
         mood,
         instrument,
         keySignature,
         timeSignature,
-        isBargainBin: isBargainBin === "true",
-        price: price ? parseFloat(price) : 0,
+        isBargainBin: Boolean(isBargainBin),
+        price: price || 0,
         currency,
-        royaltyPercentage: royaltyPercentage ? parseInt(royaltyPercentage) : 10,
-        isStakable: isStakable === "true",
-        stakingRoyaltyShare: stakingRoyaltyShare ? parseInt(stakingRoyaltyShare) : 50,
-        unlockSourceFiles: unlockSourceFiles === "true",
-        unlockRemixRights: unlockRemixRights === "true",
-        unlockPrivateMessages: unlockPrivateMessages === "true",
-        unlockBackstageContent: unlockBackstageContent === "true",
+        royaltyPercentage: royaltyPercentage || 10,
+        isStakable: Boolean(isStakable),
+        stakingRoyaltyShare: finalStakingRoyaltyShare,
+        minimumStakeAmount: finalMinimumStakeAmount,
+        lockPeriodDays: finalLockPeriodDays,
+        useProfileDefaults: Boolean(useProfileDefaults),
+        maxPool: 50000, // Set default maxPool to 50000
+        unlockSourceFiles: Boolean(unlockSourceFiles),
+        unlockRemixRights: Boolean(unlockRemixRights),
+        unlockPrivateMessages: Boolean(unlockPrivateMessages),
+        unlockBackstageContent: Boolean(unlockBackstageContent),
         creatorId: user.id,
         collectionId: riffCollectionId,
-        duration: duration ? parseFloat(duration) : null, // Save duration
+        duration: duration || null, // Save duration
+        // NFT data if minted
+        isNft: Boolean(isNft),
+        tokenId: tokenId || null,
+        contractAddress: contractAddress || null,
       })
 
       return res.status(201).json(riff)
@@ -623,10 +664,10 @@ const riffController = {
   // Get riffs uploaded within the last week
   getRecentUploads: async (req: Request, res: Response) => {
     try {
-      const oneWeekAgo = new Date();
-      oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+      const oneWeekAgo = new Date()
+      oneWeekAgo.setDate(oneWeekAgo.getDate() - 7)
 
-      const recentRiffs = await Riff.findAll({
+      const riffs = await Riff.findAll({
         where: {
           createdAt: {
             [db.Sequelize.Op.gte]: oneWeekAgo,
@@ -634,17 +675,64 @@ const riffController = {
         },
         include: [
           { model: User, as: "creator", attributes: ["id", "name", "walletAddress", "avatar"] },
-          { model: Collection, as: "collection", attributes: ["id", "name"] },
         ],
         order: [["createdAt", "DESC"]],
-      });
+        limit: 10,
+      })
 
-      return res.status(200).json({
-        riffs: recentRiffs,
-      });
+      return res.status(200).json(riffs)
     } catch (error) {
-      logger.error("Error in getRecentUploads:", error);
-      return res.status(500).json({ error: "Internal server error" });
+      logger.error("Error in getRecentUploads:", error)
+      return res.status(500).json({ error: "Internal server error" })
+    }
+  },
+
+  // Get stakable riffs for featured section
+  getStakableRiffs: async (req: Request, res: Response) => {
+    try {
+      // Get all stakable riffs with creator info and stake data
+      const riffs = await Riff.findAll({
+        where: {
+          isStakable: true,
+        },
+        include: [
+          { model: User, as: "creator", attributes: ["id", "name", "walletAddress", "avatar"] },
+        ],
+        order: [["createdAt", "DESC"]],
+        limit: 20,
+      })
+
+      // Transform data to match frontend format and calculate stake info
+      const stakableRiffs = await Promise.all(
+        riffs.map(async (riff: any) => {
+          // Get total staked amount for this riff
+          const totalStakedAmount = (await Stake.sum("amount", { where: { riffId: riff.id } })) || 0
+          
+          // Calculate max pool (use stored value or default)
+          const maxPool = riff.maxPool || 50000
+          
+          // Format duration
+          const duration = riff.duration ? `${Math.floor(riff.duration / 60)}:${String(Math.floor(riff.duration % 60)).padStart(2, '0')}` : "0:00"
+          
+          return {
+            id: `riff-${riff.id}`,
+            title: riff.title,
+            artist: riff.creator.name || `user_${riff.creator.walletAddress.substring(2, 8)}`,
+            artistImage: riff.creator.avatar || "/placeholder.svg",
+            artistWalletAddress: riff.creator.walletAddress,
+            image: riff.coverImage || "/placeholder.svg",
+            stakedAmount: Math.floor(totalStakedAmount),
+            maxPool: maxPool,
+            royaltyShare: riff.stakingRoyaltyShare || 15,
+            duration: duration,
+          }
+        })
+      )
+
+      return res.status(200).json(stakableRiffs)
+    } catch (error) {
+      logger.error("Error in getStakableRiffs:", error)
+      return res.status(500).json({ error: "Internal server error" })
     }
   },
 }

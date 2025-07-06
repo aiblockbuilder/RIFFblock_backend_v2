@@ -79,29 +79,29 @@ export const handleMulterError = (err: Error, req: Request, res: Response, next:
 }
 
 // Add file validation middleware
-export const validateFiles = (req: Request, res: Response, next: NextFunction) => {
-  if (!req.files) {
-    return res.status(400).json({ error: "No files uploaded" });
-  }
+// export const validateFiles = (req: Request, res: Response, next: NextFunction) => {
+//   if (!req.files) {
+//     return res.status(400).json({ error: "No files uploaded" });
+//   }
 
-  const files = req.files as { [fieldname: string]: Express.Multer.File[] };
+//   const files = req.files as { [fieldname: string]: Express.Multer.File[] };
   
-  if (!files.audio || files.audio.length === 0) {
-    return res.status(400).json({ error: "Audio file is required" });
-  }
+//   if (!files.audio || files.audio.length === 0) {
+//     return res.status(400).json({ error: "Audio file is required" });
+//   }
 
-  const audioFile = files.audio[0];
-  if (!audioFile.mimetype.startsWith('audio/')) {
-    return res.status(400).json({ error: "Invalid audio file type" });
-  }
+//   const audioFile = files.audio[0];
+//   if (!audioFile.mimetype.startsWith('audio/')) {
+//     return res.status(400).json({ error: "Invalid audio file type" });
+//   }
 
-  if (files.cover && files.cover.length > 0) {
-    const coverFile = files.cover[0];
-    if (!coverFile.mimetype.startsWith('image/')) {
-      return res.status(400).json({ error: "Invalid cover image type" });
-    }
-  }
+//   if (files.cover && files.cover.length > 0) {
+//     const coverFile = files.cover[0];
+//     if (!coverFile.mimetype.startsWith('image/')) {
+//       return res.status(400).json({ error: "Invalid cover image type" });
+//     }
+//   }
 
-  next();
-}
+//   next();
+// }
 

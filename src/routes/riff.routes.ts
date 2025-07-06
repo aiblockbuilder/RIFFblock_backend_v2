@@ -1,7 +1,6 @@
 import express, { RequestHandler } from "express"
 import { body, param, query } from "express-validator"
 import riffController from "../controllers/riff.controller"
-import { upload as uploadMiddleware, handleMulterError, validateFiles } from "../middlewares/upload.middleware"
 
 const router = express.Router()
 
@@ -32,12 +31,6 @@ router.get("/activity/:id", param("id").isInt(), riffController.getRiffActivity)
 // Upload a new riff
 router.post(
   "/upload",
-  uploadMiddleware.fields([
-    { name: "audio", maxCount: 1 },
-    { name: "cover", maxCount: 1 },
-  ]),
-  handleMulterError,
-  validateFiles,
   body("title").isString().notEmpty(),
   body("description").optional().isString(),
   body("genre").optional().isString(),
@@ -48,17 +41,40 @@ router.post(
   body("isBargainBin").optional().isBoolean(),
   body("collectionId").optional().isInt(),
   body("newCollectionName").optional().isString(),
+  body("newCollectionDescription").optional().isString(),
   body("price").optional().isNumeric(),
   body("currency").optional().isString(),
   body("royaltyPercentage").optional().isInt({ min: 0, max: 100 }),
   body("isStakable").optional().isBoolean(),
   body("stakingRoyaltyShare").optional().isInt({ min: 0, max: 100 }),
+  body("minimumStakeAmount").optional().isInt({ min: 1 }),
+  body("lockPeriodDays").optional().isInt({ min: 1, max: 365 }),
+  body("useProfileDefaults").optional().isBoolean(),
   body("unlockSourceFiles").optional().isBoolean(),
   body("unlockRemixRights").optional().isBoolean(),
   body("unlockPrivateMessages").optional().isBoolean(),
   body("unlockBackstageContent").optional().isBoolean(),
   body("walletAddress").isString().notEmpty(),
-  riffController.uploadRiff as RequestHandler
+  body("duration").optional().isNumeric().custom((value) => {
+    if (value === null || value === undefined) return true;
+    return !isNaN(parseFloat(value));
+  }),
+  // IPFS data validation
+  body("audioCid").isString().notEmpty(),
+  body("coverCid").optional().isString(),
+  body("metadataUrl").optional().isString(),
+  // NFT data validation
+  body("isNft").optional().isBoolean(),
+  body("tokenId").optional().isString().custom((value) => {
+    if (value === null || value === undefined) return true;
+    return typeof value === 'string';
+  }),
+  body("contractAddress").optional().isString().custom((value) => {
+    if (value === null || value === undefined) return true;
+    return typeof value === 'string';
+  }),
+
+  riffController.uploadRiff,
 )
 
 // Mint a riff as NFT
@@ -104,5 +120,8 @@ router.get("/random", riffController.getRandomRiff)
 
 // Get riffs uploaded within the last week
 router.get("/recent-uploads", riffController.getRecentUploads)
+
+// Get stakable riffs for featured section
+router.get("/stakable", riffController.getStakableRiffs)
 
 export default router
