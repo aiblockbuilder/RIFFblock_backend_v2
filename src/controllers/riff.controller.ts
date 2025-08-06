@@ -351,7 +351,7 @@ const riffController = {
         minimumStakeAmount: finalMinimumStakeAmount,
         lockPeriodDays: finalLockPeriodDays,
         useProfileDefaults: Boolean(useProfileDefaults),
-        maxPool: 50000, // Set default maxPool to 50000
+        maxPool: 10000000, // Set default maxPool to 10000000
         unlockSourceFiles: Boolean(unlockSourceFiles),
         unlockRemixRights: Boolean(unlockRemixRights),
         unlockPrivateMessages: Boolean(unlockPrivateMessages),
@@ -709,7 +709,7 @@ const riffController = {
           const totalStakedAmount = (await Stake.sum("amount", { where: { riffId: riff.id } })) || 0
 
           // Calculate max pool (use stored value or default)
-          const maxPool = riff.maxPool || 50000
+          const maxPool = riff.maxPool || 10000000
 
           // Format duration
           const duration = riff.duration ? `${Math.floor(riff.duration / 60)}:${String(Math.floor(riff.duration % 60)).padStart(2, '0')}` : "0:00"
