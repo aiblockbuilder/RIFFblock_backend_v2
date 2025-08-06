@@ -13,7 +13,7 @@ export default (sequelize: Sequelize, DataTypes: typeof DT) => {
       defaultStakingEnabled: { type: DataTypes.BOOLEAN, defaultValue: true },
       defaultRoyaltyShare: { type: DataTypes.INTEGER, defaultValue: 50 },
       lockPeriodDays: { type: DataTypes.INTEGER, defaultValue: 90 },
-      minimumStakeAmount: { type: DataTypes.INTEGER, defaultValue: 100 },
+      minimumStakeAmount: { type: DataTypes.INTEGER, defaultValue: 100000 },
       createdAt: { type: DataTypes.DATE, allowNull: false, defaultValue: DataTypes.NOW },
       updatedAt: { type: DataTypes.DATE, allowNull: false, defaultValue: DataTypes.NOW },
     },
