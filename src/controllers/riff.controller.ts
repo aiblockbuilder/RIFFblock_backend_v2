@@ -222,7 +222,7 @@ const riffController = {
         return res.status(400).json({ errors: errors.array() })
       }
 
-      console.log("Received riff upload request:", { 
+      console.log("Received riff upload request:", {
         title: req.body.title,
         walletAddress: req.body.walletAddress,
         audioCid: req.body.audioCid,
@@ -308,7 +308,7 @@ const riffController = {
 
       // Handle staking settings
       let finalStakingRoyaltyShare = stakingRoyaltyShare || 50
-      let finalMinimumStakeAmount = minimumStakeAmount || 100
+      let finalMinimumStakeAmount = minimumStakeAmount || 100000
       let finalLockPeriodDays = lockPeriodDays || 30
 
       // If using profile defaults, fetch user's staking settings
@@ -707,13 +707,13 @@ const riffController = {
         riffs.map(async (riff: any) => {
           // Get total staked amount for this riff
           const totalStakedAmount = (await Stake.sum("amount", { where: { riffId: riff.id } })) || 0
-          
+
           // Calculate max pool (use stored value or default)
           const maxPool = riff.maxPool || 50000
-          
+
           // Format duration
           const duration = riff.duration ? `${Math.floor(riff.duration / 60)}:${String(Math.floor(riff.duration % 60)).padStart(2, '0')}` : "0:00"
-          
+
           return {
             id: `riff-${riff.id}`,
             title: riff.title,
